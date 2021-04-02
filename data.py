@@ -28,10 +28,14 @@ def symplectic_form(n, canonical_coords=True):
 
 
 class HamiltonianDataSet(ABC):
-    def __init__(self, dim, h, noise):
-        self.dim = dim
+    def __init__(self, h, noise):
         self.h = h
         self.noise = noise
+
+    @staticmethod
+    @abstractmethod
+    def dimension():
+        pass
 
     @abstractmethod
     def hamiltonian(self, p, q, t=None):
@@ -97,13 +101,17 @@ class HamiltonianDataSet(ABC):
 class HarmonicOscillator(HamiltonianDataSet):
     """ Implements the Hamiltonian of an ideal harmonic oscillator in N dimensions, e.g. a spring-mass system. """
 
+    @staticmethod
+    def dimension():
+        return 2
+
     def hamiltonian(self, p, q, t=None):
         H = 1/2 * (p ** 2 + q ** 2)
-        if isinstance(H, np.ndarray):
-            H = H.sum()
         return H
+        # if isinstance(H, np.ndarray):
+        #     H = H.sum()
 
     def get_initial_value(self):
-        """ Create a random initial point between (-1, ..., -1) and (1, ..., 1). """
-        y0 = 2 * np.random.rand(self.dim) - 1
+        """ Create a random initial point between (-1, -1) and (1, 1). """
+        y0 = 2 * np.random.rand(self.dimension()) - 1
         return y0

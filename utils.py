@@ -98,8 +98,8 @@ def choose_loss(name):
 def choose_data(name):
     if name == 'spring':
         data_loader = HarmonicOscillator
-    elif name == 'pendulum':
-        data_loader = None
+    # elif name == 'pendulum':
+    #    data_loader = None
     else:
         raise ValueError("data set not recognized")
     return data_loader

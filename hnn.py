@@ -33,7 +33,7 @@ class HNN(torch.nn.Module):
 
         # Do batch matrix-vector multiplication, since gradH contains batch_size many 2n-vectors
         # (Recall that J is antisymmetric and orthogonal: J^T = -J = J^(-1).)
-        vector_field = torch.einsum('ij,aj->ai', self.J.t(), gradH)
+        vector_field = torch.einsum('ij,aj->ai', self.J.T, gradH)
         # An alternative string for this batch operation would be 'ij,...j->...i' to not specify the extra dims.
 
         return vector_field
