@@ -7,6 +7,7 @@ import imageio, shutil
 import scipy, scipy.misc, scipy.integrate
 
 from loss import *
+from data import *
 
 solve_ivp = scipy.integrate.solve_ivp
 
@@ -30,27 +31,6 @@ def rk4(fun, y0, t, dt, *args, **kwargs):
     k4 = fun(y0 + dt * k3, t + dt, *args, **kwargs)
     dy = dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
     return dy
-
-
-def symplectic_form(n, canonical_coords=True):
-    if canonical_coords:
-        Id = torch.eye(n)
-        J = torch.cat([Id[n // 2:], -Id[:n // 2]])
-    else:
-        '''Constructs the Levi-Civita permutation tensor'''
-        J = torch.ones(n, n)  # matrix of ones
-        J *= 1 - torch.eye(n)  # clear diagonals
-        J[::2] *= -1  # pattern of signs
-        J[:, ::2] *= -1
-
-        for i in range(n):  # make asymmetric
-            for j in range(i + 1, n):
-                J[i, j] *= -1
-    return J
-
-
-def L2_loss(u, v, mean=True):
-    return (u - v).pow(2).mean() if mean else (u - v).pow(2)
 
 
 def read_lipson(experiment_name, save_dir):
@@ -113,6 +93,16 @@ def choose_loss(name):
     else:
         raise ValueError("loss function not recognized")
     return loss
+
+
+def choose_data(name):
+    if name == 'spring':
+        data_loader = HarmonicOscillator
+    elif name == 'pendulum':
+        data_loader = None
+    else:
+        raise ValueError("data set not recognized")
+    return data_loader
 
 
 def make_gif(frames, save_dir, name='pendulum', duration=1e-1, pixels=None, divider=0):

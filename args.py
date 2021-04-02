@@ -19,13 +19,13 @@ def get_args(name, dimension, save_directory):
     # SCIENTIFIC ARGUMENTS
     parser.add_argument('--loss_type', default='midpoint', type=str,
                         help='choose the symplectic integration method used in training')
-    parser.add_argument('--noise', default=0.1, type=float, help='how much noise to include in the training data')
+    parser.add_argument('--noise', default=0.0, type=float, help='how much noise to include in the training data')
     parser.add_argument('--h', default=0.1, type=float, help='time step between data points in the training data')
 
     # OTHER ARGUMENTS
     parser.add_argument('--name', default=name, type=str, help='only one option right now')
-    # Use millisecond time as random seed by default
-    parser.add_argument('--seed', default=time.time()*1000, type=int, help='random seed')
+    # Use time in seconds as random seed by default
+    parser.add_argument('--seed', default=int(time.time()), type=int, help='random seed')
     parser.add_argument('--save_dir', default=save_directory, type=str, help='where to save the trained model')
     parser.add_argument('--verbose', dest='verbose', action='store_true', help='verbose?')
 

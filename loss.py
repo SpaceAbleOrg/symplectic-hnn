@@ -5,7 +5,9 @@ import torch
 import numpy as np
 from abc import ABC, abstractmethod
 
-from utils import L2_loss
+
+def L2_loss(u, v, mean=True):
+    return (u - v).pow(2).mean() if mean else (u - v).pow(2)
 
 
 class Loss(ABC):
@@ -51,11 +53,11 @@ class Loss(ABC):
 
         return L2_loss(dxdt, dxdt_hat, mean=not return_dist)
 
-    def __call__(self, *args, **kwargs):
-        self.loss(self, *args, **kwargs)
+    # Allow to call the loss object directly for evaluation
+    __call__ = loss
 
 
-class OneStepLoss(ABC, Loss):
+class OneStepLoss(Loss):
     @abstractmethod
     def argument(self, x):
         pass
@@ -75,6 +77,7 @@ class OneStepLoss(ABC, Loss):
 
 class EulerSympLoss(OneStepLoss):
     def argument(self, x):
+        # Would prefer np.split(x, 2) and specify two equal parts, but for autograd we need torch
         P, Q = torch.split(x, self.args.dim//2)
         return torch.stack((P[:, 1:], Q[:, :-1]), dim=-1)
 

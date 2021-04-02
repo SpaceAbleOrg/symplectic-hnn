@@ -30,6 +30,10 @@ class HNN(torch.nn.Module):
         H = self.forward(x)  # traditional forward pass, predicts Hamiltonian
 
         gradH = torch.autograd.grad(H.sum(), x, create_graph=True)[0]  # gradient using autograd
-        vector_field = self.J.t() @ gradH  # Recall that J is antisymmetric and orthogonal: J^T = -J = J^(-1)
+
+        # Do batch matrix-vector multiplication, since gradH contains batch_size many 2n-vectors
+        # (Recall that J is antisymmetric and orthogonal: J^T = -J = J^(-1).)
+        vector_field = torch.einsum('ij,aj->ai', self.J.t(), gradH)
+        # An alternative string for this batch operation would be 'ij,...j->...i' to not specify the extra dims.
 
         return vector_field
