@@ -46,8 +46,8 @@ def setup_args():
     data_class = choose_data(args.name)
     args.dim = data_class.dimension()
 
-    # Store some random initial value directly in args, for future convenience of integrators
-    args.init_value = data_class.random_initial_value()
+    # Store the canonical initial value directly in args, for future convenience of integrators
+    args.init_value = data_class.static_initial_value()
 
     # Set random seed
     torch.manual_seed(args.seed)
@@ -138,11 +138,11 @@ def choose_data(name):
     return data_loader
 
 
-def save_path(args):
+def save_path(args, ext='tar'):
     label = args.name + '-' + args.loss_type + '-h' + str(args.h)
     if args.noise > 0:
         label += '-n' + str(args.noise)
-    return '{}/{}.tar'.format(args.save_dir, label)
+    return '{}/{}.{}'.format(args.save_dir, label, ext)
 
 
 

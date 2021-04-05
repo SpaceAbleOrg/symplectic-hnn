@@ -66,12 +66,13 @@ def final_plot(model, args, t_span=(0, 1000)):
     pred_traj = integrate_model(model, t_span, args.init_value, **kwargs).y.T
 
     # BEGIN PLOTTING
-    fig = plt.figure(figsize=(24, 6), facecolor='white', dpi=300)
-    ax = [fig.add_subplot(1, 4, i + 1, frameon=True) for i in range(4)]
+    fig = plt.figure(figsize=(25, 6), facecolor='white', dpi=300)
+    ax = [fig.add_subplot(1, 4, i + 1, frameon=True, aspect='equal') for i in range(4)]
 
-    _plot_field_and_trajectory(ax[0], pred_field, pred_traj, "title")
+    title1 = f"Symplectic HNN Prediction, $t_f = {t_span[1]}$\n Trained with {args.loss_type}, Integrated with RK45"
+    _plot_field_and_trajectory(ax[0], pred_field, pred_traj, title1)
 
-    plt.savefig(args.save_dir + '/' + args.name + '.pdf')
+    plt.savefig(save_path(args, ext='pdf'))
 
 
 if __name__ == "__main__":

@@ -38,6 +38,8 @@ class HamiltonianDataSet(ABC):
 
     @abstractmethod
     def hamiltonian(self, p, q, t=None):
+        """ To implement the Hamiltonian function H(p, q) of the respective system. All functions must be from
+            the `autograd.numpy` library to automatically allow generation of training data sets. """
         pass
 
     def bundled_hamiltonian(self, coords, t=None):
@@ -51,6 +53,14 @@ class HamiltonianDataSet(ABC):
     @staticmethod
     @abstractmethod
     def random_initial_value():
+        """ Return a random initial value which will be used to generate individual trajectories for the dataset. """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def static_initial_value():
+        """ Return a canonical (constant) initial value for plotting an individual trajectory to exemplify
+            the flow predicted by the (Symplectic) HNN; obtained by integrating the HNN's gradient vector field. """
         pass
 
     def get_trajectory(self, t_span=(0, 3), rtol=1e-6, **kwargs):
@@ -121,6 +131,10 @@ class HarmonicOscillator(HamiltonianDataSet):
         y0 = y0 / np.sum(y0**2) * (0.1 + np.random.rand())
         return y0
 
+    @staticmethod
+    def static_initial_value():
+        return np.array([0., 1.])
+
 
 class NonlinearPendulum(HamiltonianDataSet):
     """ Implements the Hamiltonian of an ideal non-linear pendulum in 1 dimension. """
@@ -131,11 +145,15 @@ class NonlinearPendulum(HamiltonianDataSet):
         return 2
 
     def hamiltonian(self, p, q, t=None):
-        H = 1/2 * p ** 2 + (1 - np.cos(q))
+        H = 1/2 * p ** 2 + (1 - autograd.numpy.cos(q))
         return H
 
     @staticmethod
     def random_initial_value():
-        """ Start at a random initial point between (-π/2, +π/2) rad, with initial momentum zero. """
-        theta = np.pi * (np.random.rand() - 1/2)
-        return np.array([0, theta])
+        """ Start at a random initial point between (-π, +π) rad, with initial momentum zero. """
+        theta = 2 * np.pi * (np.random.rand() - 1/2)
+        return np.array([0., theta])
+
+    @staticmethod
+    def static_initial_value():
+        return np.array([0., 3])
