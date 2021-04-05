@@ -22,9 +22,6 @@ class HNN(torch.nn.Module):
     def forward(self, x):
         return self.differentiable_model(x)
 
-    #def rk4_time_derivative(self, x, dt):
-    #    return rk4(fun=self.time_derivative, y0=x, t=0, dt=dt)
-
     def time_derivative(self, x):
         """ Calculates the Hamiltonian vector field from the predicted Hamiltonian (self.forward) """
         H = self.forward(x)  # traditional forward pass, predicts Hamiltonian

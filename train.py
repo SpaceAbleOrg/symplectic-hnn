@@ -6,14 +6,12 @@
 # Sam Greydanus, Misko Dzamba, Jason Yosinski
 
 import os
-import sys
 import torch
 import numpy as np
 
-from nn_models import MLP
-from hnn import HNN
-from utils import choose_loss, choose_data
-from args import get_args
+from model.standard_nn import MLP
+from model.hnn import HNN
+from utils import setup_args, choose_loss, choose_data, save_path
 
 
 def train(args):
@@ -40,6 +38,9 @@ def train(args):
     # DO VANILLA TRAINING LOOP
     stats = {'train_loss': [], 'test_loss': []}
     for step in range(args.total_steps + 1):
+
+        # TODO split training data into smaller batches for better training
+
         # train step, find loss and optimize
         loss = loss_fct(model, x, t)
         loss.backward()
@@ -64,32 +65,6 @@ def train(args):
     return model, stats
 
 
-# This function is generic, but needs to run in this "main" file to setup the path variables
-# and define the save_directory properly.
-def setup_args():
-    # Setup directory of this file as working (save) directory
-    this_dir = os.path.dirname(os.path.abspath(__file__))
-    parent_dir = os.path.dirname(this_dir)
-    sys.path.append(parent_dir)
-
-    # Load arguments
-    args = get_args()
-
-    # Set the save directory if nothing is given
-    if not args.save_dir:
-        args.save_dir = this_dir + '/experiment-' + args.name
-
-    # Store dimension directly in args, for future convenience of loss functions
-    data_class = choose_data(args.name)
-    args.dim = data_class.dimension()
-
-    # Set random seed
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
-
-    return args
-
-
 if __name__ == "__main__":
     # SETUP AND LOAD ARGUMENTS
     args = setup_args()
@@ -99,8 +74,4 @@ if __name__ == "__main__":
 
     # SAVE
     os.makedirs(args.save_dir) if not os.path.exists(args.save_dir) else None
-    label = args.name + '-' + args.loss_type + '-h' + str(args.h)
-    if args.noise > 0:
-        label += '-n' + str(args.noise)
-    path = '{}/{}.tar'.format(args.save_dir, label)
-    torch.save(model.state_dict(), path)
+    torch.save(model.state_dict(), save_path(args))

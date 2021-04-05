@@ -12,19 +12,18 @@ from sklearn.model_selection import train_test_split
 
 def symplectic_form(n, canonical_coords=True):
     if canonical_coords:
-        Id = torch.eye(n)
-        J = torch.cat([Id[n // 2:], -Id[:n // 2]])
+        Id = np.eye(n)
+        J = np.concatenate([Id[n // 2:], -Id[:n // 2]])
     else:
         '''Constructs the Levi-Civita permutation tensor'''
-        J = torch.ones(n, n)  # matrix of ones
-        J *= 1 - torch.eye(n)  # clear diagonals
+        J = np.ones((n, n)) - np.eye(n)  # matrix of ones, without diagonal
         J[::2] *= -1  # pattern of signs
         J[:, ::2] *= -1
 
         for i in range(n):  # make asymmetric
             for j in range(i + 1, n):
                 J[i, j] *= -1
-    return J
+    return torch.tensor(J, dtype=torch.float32)
 
 
 class HamiltonianDataSet(ABC):
@@ -41,19 +40,23 @@ class HamiltonianDataSet(ABC):
     def hamiltonian(self, p, q, t=None):
         pass
 
+    def bundled_hamiltonian(self, coords, t=None):
+        return self.hamiltonian(*np.split(coords, 2), t=t)
+
     def dynamics_fn(self, t, coords):
-        gradH = autograd.grad(self.hamiltonian)(*np.split(coords, 2), t=t)
+        gradH = autograd.grad(self.bundled_hamiltonian)(coords, t=t)
         J = symplectic_form(gradH.shape[0])
         return J.T @ gradH
 
+    @staticmethod
     @abstractmethod
-    def get_initial_value(self):
+    def random_initial_value():
         pass
 
     def get_trajectory(self, t_span=(0, 3), rtol=1e-6, **kwargs):
         t_eval = np.linspace(t_span[0], t_span[1], int((t_span[1] - t_span[0]) / self.h))
 
-        y0 = self.get_initial_value()
+        y0 = self.random_initial_value()
         ivp_solution = solve_ivp(fun=self.dynamics_fn, t_span=t_span, y0=y0, t_eval=t_eval, rtol=rtol, **kwargs)
 
         y = ivp_solution['y']
@@ -99,19 +102,40 @@ class HamiltonianDataSet(ABC):
 
 
 class HarmonicOscillator(HamiltonianDataSet):
-    """ Implements the Hamiltonian of an ideal harmonic oscillator in N dimensions, e.g. a spring-mass system. """
+    """ Implements the Hamiltonian of an ideal harmonic oscillator in 1 dimension, e.g. a spring-mass system. """
 
     @staticmethod
     def dimension():
+        """ Returns 2 for the full system's dimensionality: one q position coordinate, one p momentum coordinate. """
         return 2
 
     def hamiltonian(self, p, q, t=None):
         H = 1/2 * (p ** 2 + q ** 2)
         return H
-        # if isinstance(H, np.ndarray):
-        #     H = H.sum()
 
-    def get_initial_value(self):
-        """ Create a random initial point between (-1, -1) and (1, 1). """
-        y0 = 2 * np.random.rand(self.dimension()) - 1
+    @staticmethod
+    def random_initial_value():
+        # Create a random initial point between (-1, -1) and (1, 1).
+        y0 = 2 * np.random.rand(HarmonicOscillator.dimension()) - 1
+        # Ensure that the norm is at least 0.1
+        y0 = y0 / np.sum(y0**2) * (0.1 + np.random.rand())
         return y0
+
+
+class NonlinearPendulum(HamiltonianDataSet):
+    """ Implements the Hamiltonian of an ideal non-linear pendulum in 1 dimension. """
+
+    @staticmethod
+    def dimension():
+        """ Returns 2 for the full system's dimensionality: one q position coordinate, one p momentum coordinate. """
+        return 2
+
+    def hamiltonian(self, p, q, t=None):
+        H = 1/2 * p ** 2 + (1 - np.cos(q))
+        return H
+
+    @staticmethod
+    def random_initial_value():
+        """ Start at a random initial point between (-π/2, +π/2) rad, with initial momentum zero. """
+        theta = np.pi * (np.random.rand() - 1/2)
+        return np.array([0, theta])

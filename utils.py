@@ -1,26 +1,59 @@
 # Hamiltonian Neural Networks | 2019
 # Sam Greydanus, Misko Dzamba, Jason Yosinski
 
-import numpy as np
-import os, torch, pickle, zipfile
-import imageio, shutil
-import scipy, scipy.misc, scipy.integrate
+# NOTE: This file needs to remain in the top-level project directory!
 
-from loss import *
-from data import *
+import os
+import sys
+import pickle
+import zipfile
+import imageio
+import shutil
+from PIL import Image
 
-solve_ivp = scipy.integrate.solve_ivp
+from model.args import get_args
+from model.loss import *
+from model.data import *
 
 
-def integrate_model(model, t_span, y0, fun=None, **kwargs):
-    def default_fun(t, np_x):
-        x = torch.tensor(np_x, requires_grad=True, dtype=torch.float32)
-        x = x.view(1, np.size(np_x))  # batch size of 1
-        dx = model.time_derivative(x).data.numpy().reshape(-1)
-        return dx
+# This function is generic, but needs to run in a top-level file to setup the path variables
+# and define the save_directory properly.
+def setup_args():
+    # Load arguments
+    args = get_args()
 
-    fun = default_fun if fun is None else fun
-    return solve_ivp(fun=fun, t_span=t_span, y0=y0, **kwargs)
+    # Allow for prompt
+    if args.name == "prompt":
+        args.name = input("Which model do you want to use (data set name) ?")
+        args.loss_type = input("Which numerical method for training ?")
+        h = input("Which step size h (default 0.1) ?")
+        if h:
+            args.h = float(h)
+        noise = input("Which level of noise (default none) ?")
+        if noise:
+            args.noise = float(noise)
+
+    # Setup directory of this file as working (save) directory
+    this_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(this_dir)
+    sys.path.append(parent_dir)
+
+    # Set the save directory if nothing is given
+    if not args.save_dir:
+        args.save_dir = this_dir + '/experiment-' + args.name
+
+    # Store dimension directly in args, for future convenience of loss functions
+    data_class = choose_data(args.name)
+    args.dim = data_class.dimension()
+
+    # Store some random initial value directly in args, for future convenience of integrators
+    args.init_value = data_class.random_initial_value()
+
+    # Set random seed
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+
+    return args
 
 
 def rk4(fun, y0, t, dt, *args, **kwargs):
@@ -98,11 +131,19 @@ def choose_loss(name):
 def choose_data(name):
     if name == 'spring':
         data_loader = HarmonicOscillator
-    # elif name == 'pendulum':
-    #    data_loader = None
+    elif name == 'pendulum':
+        data_loader = NonlinearPendulum
     else:
         raise ValueError("data set not recognized")
     return data_loader
+
+
+def save_path(args):
+    label = args.name + '-' + args.loss_type + '-h' + str(args.h)
+    if args.noise > 0:
+        label += '-n' + str(args.noise)
+    return '{}/{}.tar'.format(args.save_dir, label)
+
 
 
 def make_gif(frames, save_dir, name='pendulum', duration=1e-1, pixels=None, divider=0):
@@ -115,8 +156,8 @@ def make_gif(frames, save_dir, name='pendulum', duration=1e-1, pixels=None, divi
         im[divider, :] = 0
         im[divider + 1, :] = 255
         if pixels is not None:
-            im = scipy.misc.imresize(im, pixels)
-        scipy.misc.imsave(temp_dir + '/f_{:04d}.png'.format(i), im)
+            im = Image.fromarray(im).resize(pixels)  # TODO Test – Line edited because deprecated functions were removed
+        imageio.imwrite(temp_dir + '/f_{:04d}.png'.format(i), im)  # TODO Test – Line also edited, see above
 
     images = []
     for file_name in sorted(os.listdir(temp_dir)):

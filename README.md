@@ -1,4 +1,4 @@
-Hamiltonian Neural Networks
+Symplectic Hamiltonian Neural Networks
 ========
 
 

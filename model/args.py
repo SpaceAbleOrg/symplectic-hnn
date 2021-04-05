@@ -17,7 +17,7 @@ def get_args():
     parser.add_argument('--dim_hidden_layer', default=200, type=int, help='dimension of each hidden layer of the MLP')
     parser.add_argument('--learn_rate', default=1e-3, type=float, help='learning rate')
     parser.add_argument('--nonlinearity', default='tanh', type=str, help='neural net nonlinearity')
-    parser.add_argument('--total_steps', default=2000, type=int, help='number of gradient steps')
+    parser.add_argument('--total_steps', default=1000, type=int, help='number of gradient steps')
     parser.add_argument('--print_every', default=200, type=int, help='number of gradient steps between prints')
 
     # SCIENTIFIC ARGUMENTS (all optional)
@@ -32,5 +32,4 @@ def get_args():
     parser.add_argument('--save_dir', default=None, type=str, help='where to save the trained model')
     parser.add_argument('--verbose', dest='verbose', action='store_true', help='verbose?')
 
-    parser.set_defaults(feature=True)
     return parser.parse_args()
