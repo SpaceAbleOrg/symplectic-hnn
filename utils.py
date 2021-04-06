@@ -42,12 +42,9 @@ def setup_args():
     if not args.save_dir:
         args.save_dir = this_dir + '/experiment-' + args.name
 
-    # Store dimension directly in args, for future convenience of loss functions
-    data_class = choose_data(args.name)
-    args.dim = data_class.dimension()
-
-    # Store the canonical initial value directly in args, for future convenience of integrators
-    args.init_value = data_class.static_initial_value()
+    # Store data_class directly in args for future access, and dimension for future convenience (eg of loss functions)
+    args.data_class = choose_data(args.name)
+    args.dim = args.data_class.dimension()
 
     # Set random seed
     torch.manual_seed(args.seed)

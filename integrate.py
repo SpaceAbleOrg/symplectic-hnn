@@ -22,9 +22,11 @@ def load_model(args):
     return model
 
 
-def get_predicted_vector_field(model, xmin=-1.2, xmax=1.2, ymin=-1.2, ymax=1.2, gridsize=20):
+def get_predicted_vector_field(model, args, gridsize=20):
+    cmin, cmax = args.data_class.plot_boundaries()
+
     # Mesh grid to get lattice
-    b, a = np.meshgrid(np.linspace(xmin, xmax, gridsize), np.linspace(ymin, ymax, gridsize))
+    b, a = np.meshgrid(np.linspace(cmin, cmax, gridsize), np.linspace(cmin, cmax, gridsize))
     xs = np.stack([b.flatten(), a.flatten()]).T
 
     # Run model
@@ -44,7 +46,7 @@ def integrate_model(model, t_span, y0, fun=None, **kwargs):
     return solve_ivp(fun=fun, t_span=t_span, y0=y0, **kwargs)
 
 
-def _plot_field_and_trajectory(axes, field, traj, title, LS=100, LW=1):
+def _plot_field_and_trajectory(axes, field, traj, title, args, LS=100, LW=1):
     """ LS for number of line segments. LW for line width. """
     axes.quiver(field['x'][:, 0], field['x'][:, 1], field['y'][:, 0], field['y'][:, 1],
                 cmap='gray_r', scale=30, width=6e-3, color=(.5, .5, .5))
@@ -53,8 +55,11 @@ def _plot_field_and_trajectory(axes, field, traj, title, LS=100, LW=1):
         color = (float(i) / LS, 0, 1 - float(i) / LS)
         axes.plot(l[:, 0], l[:, 1], color=color, linewidth=LW)
 
+    boundary = args.data_class.plot_boundaries()
     axes.set_xlabel("$p$", fontsize=14)
     axes.set_ylabel("$q$", rotation=0, fontsize=14)
+    axes.set_xlim(boundary)
+    axes.set_ylim(boundary)
     axes.set_title(title, pad=10)
 
 
@@ -62,15 +67,15 @@ def final_plot(model, args, t_span=(0, 1000)):
     kwargs = {'t_eval': np.linspace(t_span[0], t_span[1], int((t_span[1] - t_span[0]) / args.h)),
               'rtol': 1e-6, 'method': 'RK45'}
 
-    pred_field = get_predicted_vector_field(model)
-    pred_traj = integrate_model(model, t_span, args.init_value, **kwargs).y.T
+    pred_field = get_predicted_vector_field(model, args)
+    pred_traj = integrate_model(model, t_span, args.data_class.static_initial_value(), **kwargs).y.T
 
     # BEGIN PLOTTING
     fig = plt.figure(figsize=(25, 6), facecolor='white', dpi=300)
     ax = [fig.add_subplot(1, 4, i + 1, frameon=True, aspect='equal') for i in range(4)]
 
-    title1 = f"Symplectic HNN Prediction, $t_f = {t_span[1]}$\n Trained with {args.loss_type}, Integrated with RK45"
-    _plot_field_and_trajectory(ax[0], pred_field, pred_traj, title1)
+    title1 = f"Symplectic HNN: $h = {args.h}, t_f = {t_span[1]}$\n Trained with {args.loss_type}, Integrated with RK45"
+    _plot_field_and_trajectory(ax[0], pred_field, pred_traj, title1, args)
 
     plt.savefig(save_path(args, ext='pdf'))
 

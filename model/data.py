@@ -63,6 +63,14 @@ class HamiltonianDataSet(ABC):
             the flow predicted by the (Symplectic) HNN; obtained by integrating the HNN's gradient vector field. """
         pass
 
+    @staticmethod
+    @abstractmethod
+    def plot_boundaries():
+        """ Return a 2-tuple of p- and q- boundaries for plotting 2 dimensional systems. """
+        # TODO This should be upgraded to define some custom plotting code for each system,
+        #       depending on its dimensionality etc.
+        pass
+
     def get_trajectory(self, t_span=(0, 3), rtol=1e-6, **kwargs):
         t_eval = np.linspace(t_span[0], t_span[1], int((t_span[1] - t_span[0]) / self.h))
 
@@ -135,6 +143,10 @@ class HarmonicOscillator(HamiltonianDataSet):
     def static_initial_value():
         return np.array([0., 1.])
 
+    @staticmethod
+    def plot_boundaries():
+        return -1.2, +1.2
+
 
 class NonlinearPendulum(HamiltonianDataSet):
     """ Implements the Hamiltonian of an ideal non-linear pendulum in 1 dimension. """
@@ -157,3 +169,7 @@ class NonlinearPendulum(HamiltonianDataSet):
     @staticmethod
     def static_initial_value():
         return np.array([0., 3])
+
+    @staticmethod
+    def plot_boundaries():
+        return -3.3, +3.3
