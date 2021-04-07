@@ -142,7 +142,6 @@ def save_path(args, ext='tar'):
     return '{}/{}.{}'.format(args.save_dir, label, ext)
 
 
-
 def make_gif(frames, save_dir, name='pendulum', duration=1e-1, pixels=None, divider=0):
     '''Given a three dimensional array [frames, height, width], make
     a gif and save it.'''

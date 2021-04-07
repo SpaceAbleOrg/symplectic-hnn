@@ -26,6 +26,10 @@ def symplectic_form(n, canonical_coords=True):
     return torch.tensor(J, dtype=torch.float32)
 
 
+def get_t_eval(t_span, h):
+    return np.linspace(t_span[0], t_span[1], int((t_span[1] - t_span[0]) / h) + 1)
+
+
 class HamiltonianDataSet(ABC):
     def __init__(self, h, noise):
         self.h = h
@@ -71,43 +75,45 @@ class HamiltonianDataSet(ABC):
         #       depending on its dimensionality etc.
         pass
 
-    def get_trajectory(self, t_span=(0, 3), rtol=1e-6, **kwargs):
-        t_eval = np.linspace(t_span[0], t_span[1], int((t_span[1] - t_span[0]) / self.h))
+    def get_trajectory(self, t_span=(0, 3), rtol=1e-6, y0=None, **kwargs):
+        t_eval = get_t_eval(t_span, self.h)
 
-        y0 = self.random_initial_value()
+        if y0 is None:
+            y0 = self.random_initial_value()
         ivp_solution = solve_ivp(fun=self.dynamics_fn, t_span=t_span, y0=y0, t_eval=t_eval, rtol=rtol, **kwargs)
 
-        y = ivp_solution['y']
+        y = ivp_solution.y.T
         y += np.random.randn(*y.shape) * self.noise
 
         return y, t_eval
 
-    def get_dataset(self, seed=0, samples=50, test_split=0.2, **kwargs):
+    def get_dataset(self, seed=0, samples=1500, test_split=0.2, **kwargs):
         data = {'meta': locals()}
         np.random.seed(seed)
 
         # Randomly sample inputs
         ys, ts = [], []
         for _ in range(samples):
-            y, t = self.get_trajectory(**kwargs)
-            ys.append(y.T)
+            y, t = self.get_trajectory(t_span=(0, self.h), **kwargs)
+            ys.append(y)
             ts.append(t)
 
-        data['coords'] = np.array(ys).squeeze()
+        coords = np.array(ys).squeeze()
         # Also add t to the data (although all rows will usually be the same)
-        data['t'] = np.array(ts).squeeze()
+        t = np.array(ts).squeeze()
 
         # Make a train/test split
-        t_train, t_test, y_train, y_test = train_test_split(data['t'], data['coords'], test_size=test_split)
+        t_train, t_test, y_train, y_test = train_test_split(t, coords, test_size=test_split, shuffle=True)
         data.update({'t': t_train, 'test_t': t_test, 'coords': y_train, 'test_coords': y_test})
 
         return data
 
-    def get_analytic_field(self, xmin=-1.2, xmax=1.2, ymin=-1.2, ymax=1.2, gridsize=20):
+    def get_analytic_field(self, gridsize=20):
         field = {'meta': locals()}
 
         # Meshgrid to get lattice
-        b, a = np.meshgrid(np.linspace(xmin, xmax, gridsize), np.linspace(ymin, ymax, gridsize))
+        cmin, cmax = self.plot_boundaries()
+        b, a = np.meshgrid(np.linspace(cmin, cmax, gridsize), np.linspace(cmin, cmax, gridsize))
         ys = np.stack([b.flatten(), a.flatten()])
 
         # Get vector field on lattice
@@ -115,7 +121,7 @@ class HamiltonianDataSet(ABC):
         dydt = np.stack(dydt).T
 
         field['x'] = ys.T
-        field['dx'] = dydt.T
+        field['y'] = dydt.T
         return field
 
 
@@ -136,7 +142,7 @@ class HarmonicOscillator(HamiltonianDataSet):
         # Create a random initial point between (-1, -1) and (1, 1).
         y0 = 2 * np.random.rand(HarmonicOscillator.dimension()) - 1
         # Ensure that the norm is at least 0.1
-        y0 = y0 / np.sum(y0**2) * (0.1 + np.random.rand())
+        y0 = y0 / np.linalg.norm(y0) * (0.1 + np.random.rand())
         return y0
 
     @staticmethod

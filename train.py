@@ -29,7 +29,7 @@ def train(args):
     loss_fct = choose_loss(args.loss_type)(args)
 
     # LOAD DATASET AND PREPARE TENSOR OBJECTS
-    data = data_loader.get_dataset(seed=args.seed)
+    data = data_loader.get_dataset(seed=args.seed, samples=3000, test_split=0.05)
     x = torch.tensor(data['coords'], requires_grad=True, dtype=torch.float32)  # shape (batch_size, 2) ???
     test_x = torch.tensor(data['test_coords'], requires_grad=True, dtype=torch.float32)  # shape (batch_size, 2) ???
     t = data['t']
@@ -42,12 +42,14 @@ def train(args):
         # TODO split training data into smaller batches for better training
 
         # train step, find loss and optimize
+        model.train()
         loss = loss_fct(model, x, t)
         loss.backward()
         optim.step()
         optim.zero_grad()
 
         # run test data
+        model.eval()
         test_loss = loss_fct(model, test_x, test_t)
 
         # logging
