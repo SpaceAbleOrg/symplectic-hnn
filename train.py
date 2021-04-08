@@ -28,12 +28,18 @@ def train(args):
     # Load the symplectic (or not) loss function
     loss_fct = choose_loss(args.loss_type)(args)
 
+    if args.verbose:
+        print("Generating data set...")
+
     # LOAD DATASET AND PREPARE TENSOR OBJECTS
-    data = data_loader.get_dataset(seed=args.seed, samples=3000, test_split=0.05)
+    data = data_loader.get_dataset(seed=args.seed, samples=2000, test_split=0.10)
     x = torch.tensor(data['coords'], requires_grad=True, dtype=torch.float32)  # shape (batch_size, 2) ???
     test_x = torch.tensor(data['test_coords'], requires_grad=True, dtype=torch.float32)  # shape (batch_size, 2) ???
     t = data['t']
     test_t = data['test_t']
+
+    if args.verbose:
+        print("Begin training loop...")
 
     # DO VANILLA TRAINING LOOP
     stats = {'train_loss': [], 'test_loss': []}

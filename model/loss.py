@@ -79,8 +79,8 @@ class EulerSympLoss(OneStepLoss):
     def argument(self, x):
         # Would prefer np.split(x, 2) and specify two equal parts, but for autograd we need torch
         P, Q = torch.split(x, self.args.dim//2, dim=-1)
-        P, Q = P.squeeze(), Q.squeeze()
-        return torch.stack((P[:, 1:], Q[:, :-1]), dim=-1)
+        x = torch.cat((P[:, 1:], Q[:, :-1]), dim=-1)
+        return x
 
 
 class MidpointLoss(OneStepLoss):

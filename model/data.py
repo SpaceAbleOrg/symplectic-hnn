@@ -170,7 +170,8 @@ class NonlinearPendulum(HamiltonianDataSet):
     def random_initial_value():
         """ Start at a random initial point between (-π, +π) rad, with initial momentum zero. """
         theta = 2 * np.pi * (np.random.rand() - 1/2)
-        return np.array([0., theta])
+        p = 2 * np.random.rand() - 1
+        return np.array([p, theta])
 
     @staticmethod
     def static_initial_value():
@@ -179,3 +180,36 @@ class NonlinearPendulum(HamiltonianDataSet):
     @staticmethod
     def plot_boundaries():
         return -3.3, +3.3
+
+
+class FermiPastaUlam(HamiltonianDataSet):
+    """ Implements the Hamiltonian of the Fermi-Pasta-Ulam problem for m=3 (see GNI Section I.5.1). """
+
+    @staticmethod
+    def dimension():
+        """ Returns 2 for the full system's dimensionality: one q position coordinate, one p momentum coordinate. """
+        return 12
+
+    def hamiltonian(self, p, q, t=None, omega=50):
+        H = 1/2 * autograd.numpy.sum(p ** 2)\
+            + omega**2 / 4 * autograd.numpy.sum((q[1::2] - q[::2]) ** 2)\
+            + q[0] ** 4 + q[-1] ** 4 + autograd.numpy.sum((q[2::2] - q[1:-1:2]) ** 4)  # non-linear springs
+        return H
+
+    @staticmethod
+    def random_initial_value():
+        """ Generates a completely random initial state vector in [-1, +1]^DIM. """
+        return 2 * np.random.rand(FermiPastaUlam.dimension()) - 1
+
+    @staticmethod
+    def static_initial_value(**kwargs):
+        omega = kwargs['omega']
+        sq2 = np.sqrt(2)
+
+        p0 = np.array([0, sq2, 0, 0, 0, 0])
+        q0 = np.array([(1 - 1/omega)/sq2, (1 + 1/omega)/sq2, 0, 0, 0, 0])
+        return np.concatenate((p0, q0))
+
+    @staticmethod
+    def plot_boundaries():
+        pass  # TODO

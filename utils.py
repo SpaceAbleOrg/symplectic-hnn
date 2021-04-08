@@ -24,8 +24,10 @@ def setup_args():
 
     # Allow for prompt
     if args.name == "prompt":
-        args.name = input("Which model do you want to use (data set name) ?")
-        args.loss_type = input("Which numerical method for training ?")
+        args.name = input("Which model (data set name) do you want to use ?")
+        loss_type = input("Which numerical method for training (default midpoint) ?")
+        if loss_type:
+            args.loss_type = loss_type
         h = input("Which step size h (default 0.1) ?")
         if h:
             args.h = float(h)
@@ -95,6 +97,7 @@ def from_pickle(path):  # load something
     return thing
 
 
+# TODO Replace all these giant cases by dictionaries and simply index them!
 def choose_nonlinearity(name):
     if name == 'tanh':
         nl = torch.tanh
@@ -115,6 +118,8 @@ def choose_nonlinearity(name):
     return nl
 
 
+# TODO Replace all these giant cases by dictionaries and simply index them!
+#       Maybe even register the string-format name automatically from within the respective classes...
 def choose_loss(name):
     if name == 'euler-symp':
         loss = EulerSympLoss
@@ -125,11 +130,15 @@ def choose_loss(name):
     return loss
 
 
+# TODO Replace all these giant cases by dictionaries and simply index them!
+#       Maybe even register the string-format name automatically from within the respective classes...
 def choose_data(name):
     if name == 'spring':
         data_loader = HarmonicOscillator
     elif name == 'pendulum':
         data_loader = NonlinearPendulum
+    elif name == 'fpu':  # FPU = Fermi-Pasta-Ulam (see GNI book)
+        data_loader = FermiPastaUlam
     else:
         raise ValueError("data set not recognized")
     return data_loader
