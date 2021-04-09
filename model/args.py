@@ -25,6 +25,8 @@ def get_args():
                         help='choose the symplectic integration method used in training')
     parser.add_argument('--noise', default=0.0, type=float, help='how much noise to include in the training data')
     parser.add_argument('--h', default=0.1, type=float, help='time step between data points in the training data')
+    parser.add_argument('--data_samples', default=3000, type=int, help='number of samples in datasets')
+    parser.add_argument('--test_split', default=0.1, type=float, help='percentage size of testing/validation dataset')
 
     # OTHER ARGUMENTS (all optional)
     # Use time in seconds as random seed by default

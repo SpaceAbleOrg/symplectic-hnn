@@ -32,9 +32,11 @@ def train(args):
         print("Generating data set...")
 
     # LOAD DATASET AND PREPARE TENSOR OBJECTS
-    data = data_loader.get_dataset(seed=args.seed, samples=2000, test_split=0.10)
-    x = torch.tensor(data['coords'], requires_grad=True, dtype=torch.float32)  # shape (batch_size, 2) ???
-    test_x = torch.tensor(data['test_coords'], requires_grad=True, dtype=torch.float32)  # shape (batch_size, 2) ???
+    print_every = args.print_every if args.verbose else None
+    data = data_loader.get_dataset(seed=args.seed, samples=args.data_samples,
+                                   test_split=args.test_split, print_every=print_every)
+    x = torch.tensor(data['coords'], requires_grad=True, dtype=torch.float32)  # shape (batch_size, dim)
+    test_x = torch.tensor(data['test_coords'], requires_grad=True, dtype=torch.float32)  # shape (batch_size, dim)
     t = data['t']
     test_t = data['test_t']
 
@@ -45,7 +47,9 @@ def train(args):
     stats = {'train_loss': [], 'test_loss': []}
     for step in range(args.total_steps + 1):
 
-        # TODO split training data into smaller batches for better training
+        # TODO split training data into smaller batches for faster training
+        #       open question: do smaller batches also yield better training (or do the gradients just add up, for
+        #       the same overall effect during the gradient descent)
 
         # train step, find loss and optimize
         model.train()

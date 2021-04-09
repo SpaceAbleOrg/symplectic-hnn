@@ -87,13 +87,15 @@ class HamiltonianDataSet(ABC):
 
         return y, t_eval
 
-    def get_dataset(self, seed=0, samples=1500, test_split=0.2, **kwargs):
+    def get_dataset(self, seed=0, samples=1500, test_split=0.2, print_every=None, **kwargs):
         data = {'meta': locals()}
         np.random.seed(seed)
 
         # Randomly sample inputs
         ys, ts = [], []
-        for _ in range(samples):
+        for i in range(samples):
+            if print_every and i % print_every == 0:
+                print(f"Generating sample {i}...\r")
             y, t = self.get_trajectory(t_span=(0, self.h), **kwargs)
             ys.append(y)
             ts.append(t)
