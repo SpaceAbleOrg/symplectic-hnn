@@ -7,7 +7,18 @@
 
 import torch
 
+from model.standard_nn import MLP
 from utils import symplectic_form
+
+
+def get_hnn(args):
+    # Create the standard MLP with args.dim inputs and one single scalar output, the Hamiltonian
+    nn_model = MLP(hidden_layers=args.hidden_layers, input_dim=args.dim, hidden_dim=args.hidden_dim, output_dim=1,
+                   nonlinearity=args.nonlinearity)
+    # Use this model to create a Hamiltonian Neural Network, which knows how to differentiate the Hamiltonian
+    model = HNN(nn_model)
+
+    return model
 
 
 class HNN(torch.nn.Module):

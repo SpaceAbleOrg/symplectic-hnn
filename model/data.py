@@ -75,26 +75,27 @@ class HamiltonianDataSet(ABC):
         #       depending on its dimensionality etc.
         pass
 
-    def get_trajectory(self, t_span=(0, 3), rtol=1e-6, y0=None, **kwargs):
+    def get_trajectory(self, t_span=(0, 3), rtol=1e-9, y0=None, **kwargs):
         t_eval = get_t_eval(t_span, self.h)
 
         if y0 is None:
             y0 = self.random_initial_value()
-        ivp_solution = solve_ivp(fun=self.dynamics_fn, t_span=t_span, y0=y0, t_eval=t_eval, rtol=rtol, **kwargs)
+        ivp_solution = solve_ivp(fun=self.dynamics_fn, t_span=t_span, y0=y0, t_eval=t_eval, rtol=rtol, method='RK45', **kwargs)
 
         y = ivp_solution.y.T
-        y += np.random.randn(*y.shape) * self.noise
+        if self.noise > 0:
+            y += np.random.randn(*y.shape) * self.noise
 
         return y, t_eval
 
-    def get_dataset(self, seed=0, samples=1500, test_split=0.2, print_every=None, **kwargs):
+    def get_dataset(self, seed=0, samples=1500, test_split=0.2, print_args=None, **kwargs):
         data = {'meta': locals()}
         np.random.seed(seed)
 
         # Randomly sample inputs
         ys, ts = [], []
         for i in range(samples):
-            if print_every and i % print_every == 0:
+            if print_args and print_args.verbose and i % print_args.print_every == 0:
                 print(f"Generating sample {i}...\r")
             y, t = self.get_trajectory(t_span=(0, self.h), **kwargs)
             ys.append(y)
@@ -170,7 +171,7 @@ class NonlinearPendulum(HamiltonianDataSet):
 
     @staticmethod
     def random_initial_value():
-        """ Start at a random initial point between (-π, +π) rad, with initial momentum zero. """
+        """ Start at a random initial point between (-π, +π) rad, with initial momentum in [-1, +1]. """
         theta = 2 * np.pi * (np.random.rand() - 1/2)
         p = 2 * np.random.rand() - 1
         return np.array([p, theta])
@@ -200,8 +201,9 @@ class FermiPastaUlam(HamiltonianDataSet):
 
     @staticmethod
     def random_initial_value():
-        """ Generates a completely random initial state vector in [-1, +1]^DIM. """
-        return 2 * np.random.rand(FermiPastaUlam.dimension()) - 1
+        """ Generates a completely random initial state vector in [-2, +2]^DIM where the true solution lives. """
+        L = 2.1  # The "true" RK45 solution has p and q oscillating between -2 and +2, as well as x, y in [-1.5, +1.5]
+        return L * (2 * np.random.rand(FermiPastaUlam.dimension()) - 1)
 
     @staticmethod
     def static_initial_value(**kwargs):

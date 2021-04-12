@@ -7,20 +7,8 @@ from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 
 from utils import setup_args, save_path
-from model.standard_nn import MLP
-from model.hnn import HNN
+from model.hnn import get_hnn
 from model.data import get_t_eval
-
-
-def load_model(args):
-    # Create the standard MLP with args.dim inputs and one single scalar output, the Hamiltonian
-    nn_model = MLP(args.dim, args.dim_hidden_layer, output_dim=1, nonlinearity=args.nonlinearity)
-    # Use this model to create a Hamiltonian Neural Network, which knows how to differentiate the Hamiltonian
-    model = HNN(nn_model)
-    # Load saved state using the standard save_path
-    model.load_state_dict(torch.load(save_path(args)))
-
-    return model
 
 
 def get_predicted_vector_field(model, args, gridsize=20):
@@ -179,6 +167,9 @@ def final_plot(model, args, t_span=(0, 300)):
 if __name__ == "__main__":
     args = setup_args()
 
-    model = load_model(args)
+    model = get_hnn(args)
+
+    # Load saved state using the standard save_path
+    model.load_state_dict(torch.load(save_path(args)))
 
     final_plot(model, args)

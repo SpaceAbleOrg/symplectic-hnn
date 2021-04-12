@@ -14,7 +14,8 @@ def get_args():
     # DEFAULT ML ARGUMENTS (all optional)
     #parser.add_argument('--dim', default=dimension, type=int, help='dimensionality of input tensor')
     # The dimension (of the input tensor) is now determined by the chosen system/data set via the 'name' arg
-    parser.add_argument('--dim_hidden_layer', default=200, type=int, help='dimension of each hidden layer of the MLP')
+    parser.add_argument('--hidden_layers', default=1, type=int, help='number of hidden layers of the MLP')
+    parser.add_argument('--hidden_dim', default=200, type=int, help='dimension of each hidden layer of the MLP')
     parser.add_argument('--learn_rate', default=1e-3, type=float, help='learning rate')
     parser.add_argument('--nonlinearity', default='tanh', type=str, help='neural net nonlinearity')
     parser.add_argument('--total_steps', default=1000, type=int, help='number of gradient steps')
@@ -25,6 +26,8 @@ def get_args():
                         help='choose the symplectic integration method used in training')
     parser.add_argument('--noise', default=0.0, type=float, help='how much noise to include in the training data')
     parser.add_argument('--h', default=0.1, type=float, help='time step between data points in the training data')
+    parser.add_argument('--new_data', dest='new_data', action='store_true',
+                        help='do not use stored dataset, re-create a full dataset from scratch instead')
     parser.add_argument('--data_samples', default=3000, type=int, help='number of samples in datasets')
     parser.add_argument('--test_split', default=0.1, type=float, help='percentage size of testing/validation dataset')
 
