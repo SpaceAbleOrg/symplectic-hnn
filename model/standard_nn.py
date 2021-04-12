@@ -24,13 +24,6 @@ class MLP(torch.nn.Module):
         self.output_dim = output_dim
         self.nonlinearity = choose_nonlinearity(nonlinearity)
 
-        # OLD HARDCODED
-        #self.layer0 = torch.nn.Linear(input_dim, hidden_dim)
-        #self.layer1 = torch.nn.Linear(hidden_dim, hidden_dim)
-        #self.layer2 = torch.nn.Linear(hidden_dim, output_dim, bias=False)
-        # for l in [self.layer0, self.layer1, self.layer2]:
-        #    torch.nn.init.orthogonal_(l.weight)  # use a principled initialization
-
         # Set and get attributes with a variable name, to properly register them as parameters (see comment above)
         self.__setattr__('layer0', torch.nn.Linear(input_dim, hidden_dim))  # INPUT LAYER
         for i in range(self.hidden_layers):
@@ -50,9 +43,4 @@ class MLP(torch.nn.Module):
         N = self.hidden_layers + 1
         x = self.__getattr__(f'layer{N}')(x)
         return x
-
-        # x = self.nonlinearity(self.layer0(x))
-        # x = self.nonlinearity(self.layer1(x))
-        # x = self.layer2(x)
-        # return x
 

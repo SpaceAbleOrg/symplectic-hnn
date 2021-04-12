@@ -73,17 +73,16 @@ if __name__ == "__main__":
         print("Generating a new data set...")
         data_loader = args.data_class(args.h, args.noise)
         data = data_loader.get_dataset(seed=args.seed, samples=args.data_samples,
-                                       test_split=args.test_split, args=args)
-        print(data)
+                                       test_split=args.test_split, print_args=args)
         to_pickle(data, data_path)
     else:
         print("Loading the existing data set...")
         data = from_pickle(data_path)
-        print(data)
         # TODO Reconstruct state / parameters / args etc from the 'meta' entry of the pickled dict...
 
     # RUN THE MAIN FUNCTION TO TRAIN THE MODEL
-    model, _ = train(model, data, args)
+    if not args.new_data:
+        model, _ = train(model, data, args)
 
     # SAVE
     os.makedirs(args.save_dir) if not os.path.exists(args.save_dir) else None
