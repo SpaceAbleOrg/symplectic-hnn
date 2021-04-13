@@ -4,6 +4,7 @@
 import torch
 import numpy as np
 from scipy.integrate import solve_ivp
+from scipy.optimize import fixed_point
 import matplotlib.pyplot as plt
 
 from utils import setup_args, save_path
@@ -40,7 +41,7 @@ def integrate_model(model, t_span, y0, fun=None, **kwargs):
     return solve_ivp(fun=fun, t_span=t_span, y0=y0, **kwargs).y.T
 
 
-def integrate_euler_symp(model, args, t_span, y0):
+def integrate_euler_symp(model, t_span, y0, args):
     y = y0
     ys = [y0]
     t = t_span[0]
@@ -56,12 +57,32 @@ def integrate_euler_symp(model, args, t_span, y0):
         y = y + args.h * fp
         ys.append(y)
         t += args.h
+        ts.append(t)
 
     return ys
 
 
-def integrate_midpoint(model, args, t_span, y0):
-    pass
+def integrate_midpoint(model, t_span, y0, args):
+    dim = np.size(y0)
+
+    def iter_fn(y_var, yn, h):
+        y_var = torch.tensor(y_var, requires_grad=True, dtype=torch.float32).view(1, dim)
+        yn = torch.tensor(yn, requires_grad=True, dtype=torch.float32).view(1, dim)
+        return (yn + h * model.time_derivative((y_var + yn) / 2)).detach().numpy().squeeze()
+
+    y = y0
+    ys = [y0]
+    t = t_span[0]
+    ts = [t]
+
+    while t <= t_span[1]:
+        y = fixed_point(iter_fn, y, args=(y, args.h), xtol=1e-4, method='iteration')
+        ys.append(y)
+        t += args.h
+        ts.append(t)
+
+    return np.array(ys), np.array(ts)
+    #return np.array(ys)
 
 
 def phase_space_helper(axes, boundary, title):
@@ -111,6 +132,7 @@ def final_plot(model, args, t_span=(0, 300)):
     static_y0 = args.data_class.static_initial_value()
     pred_field = get_predicted_vector_field(model, args)
     pred_traj = integrate_model(model, t_span, static_y0, **kwargs)
+    midp_traj, midp_t = integrate_midpoint(model, t_span, static_y0, args)
 
     # Calculate the Hamiltonian along the trajectory
     H = model.forward(torch.tensor(pred_traj, dtype=torch.float32)).data.numpy()
@@ -139,17 +161,20 @@ def final_plot(model, args, t_span=(0, 300)):
     title_pred = f"Symplectic HNN: $h = {args.h}, t_f = {t_span[1]}$\n Trained with {args.loss_type}, Integrated with RK45"
     phase_space_plot(ax[1], pred_field, pred_traj, title_pred, args)
 
-    N = len(t_eval)
-    lim = N//3
-    title_both = f"$p$ Coordinate vs. Time \n (Note: for more clarity, $t_f = {t_eval[lim]})"
+    title_midp = f"Symplectic HNN: $h = {args.h}, t_f = {t_span[1]}$\n Trained with {args.loss_type}, Integrated with midpoint"
+    phase_space_plot(ax[2], pred_field, midp_traj, title_midp, args)
 
-    axes = ax[2]
-    axes.plot(t_eval[:lim], exact_traj[:lim, 0])
-    axes.plot(t_eval[:lim], pred_traj[:lim, 0])
+    lim = len(t_eval)//3
+    title_both = f"$p$ Coordinate vs. Time \n (Note: smaller t-interval for more clarity)"
+    axes = ax[3]
+    axes.plot(t_eval[lim:-lim], exact_traj[lim:-lim, 0], label='exact')
+    axes.plot(t_eval[lim:-lim], pred_traj[lim:-lim, 0], label='pred RK45')
+    axes.plot(midp_t[lim:-lim], midp_traj[lim:-lim, 0], label='pred midp')
+    axes.legend()
     axes.set_title(title_both)
 
-    title_trajerror = f"Deviation (norm of error) of the two trajectories \n (Over full timespan, $t_f = {t_span[1]}$)"
-    plot_helper(ax[3], t_eval, traj_error, title_trajerror)
+    #title_trajerror = f"Deviation (norm of error) of the two trajectories \n (Over full timespan, $t_f = {t_span[1]}$)"
+    #plot_helper(ax[3], t_eval, traj_error, title_trajerror)
 
     # TODO Eventually fix the scientific notation for the axis scale, see this question:
     #       https://stackoverflow.com/questions/42656139/set-scientific-notation-with-fixed-exponent-and-significant-digits-for-multiple

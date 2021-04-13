@@ -96,7 +96,7 @@ class HamiltonianDataSet(ABC):
         ys, ts = [], []
         for i in range(samples):
             if print_args and print_args.verbose and i % print_args.print_every == 0:
-                print(f"Generating sample {i}...\r")
+                print(f"Generating sample {i}...", end='\r')
             y, t = self.get_trajectory(t_span=(0, self.h), **kwargs)
             ys.append(y)
             ts.append(t)
