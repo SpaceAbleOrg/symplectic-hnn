@@ -5,6 +5,8 @@ import torch
 import numpy as np
 from abc import ABC, abstractmethod
 
+from utils import choose_helper
+
 
 def L2_loss(u, v, mean=True):
     return (u - v).pow(2).mean() if mean else (u - v).pow(2)
@@ -32,16 +34,13 @@ class ImplicitMidpoint(OneStepScheme):
         return (yn + ynplusone) / 2
 
 
-# TODO Replace all these giant cases by dictionaries and simply index them!
-#       Maybe even register the string-format name automatically from within the respective classes...
+# TODO Maybe register the string-format name automatically (in some global dict?) from within the respective classes...
 def choose_scheme(name):
-    if name == 'euler-symp':
-        loss = EulerSymplectic
-    elif name == 'midpoint':
-        loss = ImplicitMidpoint
-    else:
-        raise ValueError("loss function not recognized")
-    return loss
+    schemes = {'euler-symp': EulerSymplectic,
+               'midpoint': ImplicitMidpoint
+               }
+
+    return choose_helper(schemes, name, choose_what="Integration scheme")
 
 
 class Loss(ABC):
