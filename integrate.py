@@ -157,9 +157,9 @@ def final_plot(model, args, t_span=(0, 300)):
     lim = len(t_eval)//3
     title_both = f"$p$ Coordinate vs. Time \n (Note: smaller t-interval for more clarity)"
     axes = ax[3]
-    axes.plot(t_eval[:lim], exact_traj[:lim, 0], label='exact')
-    axes.plot(t_eval[:lim], pred_traj_rk45[:lim, 0], label='pred RK45')
-    axes.plot(t_custom[:lim], pred_traj_custom[:lim, 0], label='pred midp')
+    axes.plot(t_eval[:lim], exact_traj[:lim, 0], label='Exact')
+    axes.plot(t_eval[:lim], pred_traj_rk45[:lim, 0], label='Pred RK45')
+    axes.plot(t_custom[:lim], pred_traj_custom[:lim, 0], label=f'Pred {args.loss_type}')
     axes.set_xlabel("$t$", fontsize=14)
     axes.set_ylabel("$p$", rotation=0, fontsize=14)
     axes.legend()
