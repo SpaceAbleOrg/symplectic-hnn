@@ -1,4 +1,4 @@
-# Symplectic Hamiltonian Neural Networs | 2021
+# Symplectic Hamiltonian Neural Networks | 2021
 # Marco David
 
 import torch

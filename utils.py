@@ -1,3 +1,7 @@
+# Symplectic Hamiltonian Neural Networks | 2021
+# Marco David
+
+# Originally written for the project and by:
 # Hamiltonian Neural Networks | 2019
 # Sam Greydanus, Misko Dzamba, Jason Yosinski
 
@@ -6,10 +10,10 @@
 import os
 import sys
 import pickle
-import zipfile
-import imageio
-import shutil
-from PIL import Image
+# import zipfile
+# import imageio
+# import shutil
+# from PIL import Image
 
 from model.args import get_args
 from model.loss import *
