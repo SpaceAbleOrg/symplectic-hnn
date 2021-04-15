@@ -24,7 +24,7 @@ def get_hnn(args):
 class HNN(torch.nn.Module):
     """ Learn arbitrary Hamiltonian vector fields that are the symplectic derivative of a scalar function H """
     def __init__(self, differentiable_model):
-        super(HNN, self).__init__()
+        super().__init__()
         self.differentiable_model = differentiable_model
 
         # Symplectic form J in matrix form in canonical coords

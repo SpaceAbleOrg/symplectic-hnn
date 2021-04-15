@@ -8,6 +8,7 @@ from scipy.optimize import fixed_point
 import matplotlib.pyplot as plt
 
 from utils import setup_args, save_path
+from model.loss import choose_scheme
 from model.hnn import get_hnn
 from model.data import get_t_eval
 
@@ -26,7 +27,7 @@ def get_predicted_vector_field(model, args, gridsize=20):
     return {'x': xs, 'y': mesh_dx.data.numpy()}
 
 
-def integrate_model(model, t_span, y0, fun=None, **kwargs):
+def integrate_model_rk45(model, t_span, y0, fun=None, **kwargs):
     def default_fun(t, np_x):
         x = torch.tensor(np_x, requires_grad=True, dtype=torch.float32)
         x = x.view(1, np.size(np_x))  # batch size of 1
@@ -41,34 +42,17 @@ def integrate_model(model, t_span, y0, fun=None, **kwargs):
     return solve_ivp(fun=fun, t_span=t_span, y0=y0, **kwargs).y.T
 
 
-def integrate_euler_symp(model, t_span, y0, args):
-    y = y0
-    ys = [y0]
-    t = t_span[0]
-    ts = [t]
-
-    size = np.size(y0)
-
-    # y_tens = torch.tensor(y, requires_grad=True, dtype=torch.float32).view(1, size)
-    # dy_tens = model.time_derivative(y_tens).data.numpy().reshape(-1)
-
-    while t <= t_span[1]:
-        fp = 0
-        y = y + args.h * fp
-        ys.append(y)
-        t += args.h
-        ts.append(t)
-
-    return ys
-
-
-def integrate_midpoint(model, t_span, y0, args):
-    dim = np.size(y0)
+def integrate_model_custom(model, t_span, y0, args):
+    dim = args.dim  # assert == np.size(y0)
+    scheme = choose_scheme(args.loss_type)(args)
 
     def iter_fn(y_var, yn, h):
         y_var = torch.tensor(y_var, requires_grad=True, dtype=torch.float32).view(1, dim)
         yn = torch.tensor(yn, requires_grad=True, dtype=torch.float32).view(1, dim)
-        return (yn + h * model.time_derivative((y_var + yn) / 2)).detach().numpy().squeeze()
+
+        y_arg = scheme.argument(yn, y_var)
+
+        return (yn + h * model.time_derivative(y_arg)).detach().numpy().squeeze()
 
     y = y0
     ys = [y0]
@@ -76,17 +60,19 @@ def integrate_midpoint(model, t_span, y0, args):
     ts = [t]
 
     while t <= t_span[1]:
-        # TODO Iterate the function myself, say 10 times for an error h^10.
-        yn = y
-        for i in range(10):
-            y = iter_fn(y, yn, args.h)
-            #y = fixed_point(iter_fn, y, args=(y, args.h), xtol=1e-8, method='iteration')  # xtol=1e-4
+        # Alternative to scipy's fixed_point: Iterate the function myself, say 10 times for an error h^10.
+        # yn = y
+        # for i in range(10):
+        #    y = iter_fn(y, yn, args.h, dim, model, scheme)
+
+        y = fixed_point(iter_fn, y, args=(y, args.h), xtol=1e-4)  # method='iteration' possible, too, without accelerated convergence
+        # xtol=1e-8 not attainable with <500 iterations
         ys.append(y)
         t += args.h
         ts.append(t)
 
     return np.array(ys), np.array(ts)
-    #return np.array(ys)
+    # return np.array(ys)
 
 
 def phase_space_helper(axes, boundary, title):
@@ -94,13 +80,14 @@ def phase_space_helper(axes, boundary, title):
     axes.set_xlabel("$p$", fontsize=14)
     axes.set_ylabel("$q$", rotation=0, fontsize=14)
     axes.set_title(title, pad=10)
+    axes.set_aspect('equal')
 
     if boundary:
         axes.set_xlim(boundary)
         axes.set_ylim(boundary)
 
 
-def dataset_plot(axes, train_data, test_data, args, title):
+def plot_dataset(axes, train_data, test_data, args, title):
     """ Plots a dataset in phase space, explicitly coloring training data blue and testing data red. """
     axes.plot(train_data[:, 0], train_data[:, 1], 'X', color='blue')
     axes.plot(test_data[:, 0], test_data[:, 1], 'X', color='red')
@@ -130,16 +117,15 @@ def plot_helper(axes, x, y, title=None):
 
 def final_plot(model, args, t_span=(0, 300)):
     t_eval = get_t_eval(t_span, args.h)
-    kwargs = {'t_eval': t_eval, 'rtol': 1e-6, 'method': 'RK45'}
 
     # INTEGRATE MODEL
     static_y0 = args.data_class.static_initial_value()
     pred_field = get_predicted_vector_field(model, args)
-    pred_traj = integrate_model(model, t_span, static_y0, **kwargs)
-    midp_traj, midp_t = integrate_midpoint(model, t_span, static_y0, args)
+    pred_traj_rk45 = integrate_model_rk45(model, t_span, static_y0, t_eval=t_eval, rtol=1e-6, method='RK45')
+    pred_traj_custom, t_custom = integrate_model_custom(model, t_span, static_y0, args)
 
     # Calculate the Hamiltonian along the trajectory
-    H = model.forward(torch.tensor(pred_traj, dtype=torch.float32)).data.numpy()
+    #H = model.forward(torch.tensor(pred_traj_rk45, dtype=torch.float32)).data.numpy()
 
     # TRUE TRAJECTORY FOR REFERENCE
     data_loader = args.data_class(args.h, args.noise)
@@ -149,11 +135,11 @@ def final_plot(model, args, t_span=(0, 300)):
     # dataset_plot(ax[2], dataset['coords'][:, 0], dataset['test_coords'][:, 0], args, "Dataset for ...")
 
     # Calculate the initial Hamiltonian = Hamiltonian at all times of true trajectory
-    Hy0 = data_loader.bundled_hamiltonian(static_y0)
+    #Hy0 = data_loader.bundled_hamiltonian(static_y0)
 
     # Calculate the respective errors
-    traj_error = np.linalg.norm(pred_traj - exact_traj, axis=1)
-    H_error = np.abs(H - Hy0)
+    #traj_error = np.linalg.norm(pred_traj_rk45 - exact_traj, axis=1)
+    #H_error = np.abs(H - Hy0)
 
     # === BEGIN PLOTTING ===
     fig = plt.figure(figsize=(25, 6), facecolor='white', dpi=300)
@@ -163,17 +149,19 @@ def final_plot(model, args, t_span=(0, 300)):
     phase_space_plot(ax[0], exact_field, exact_traj, title_true, args)
 
     title_pred = f"Symplectic HNN: $h = {args.h}, t_f = {t_span[1]}$\n Trained with {args.loss_type}, Integrated with RK45"
-    phase_space_plot(ax[1], pred_field, pred_traj, title_pred, args)
+    phase_space_plot(ax[1], pred_field, pred_traj_rk45, title_pred, args)
 
-    title_midp = f"Symplectic HNN: $h = {args.h}, t_f = {t_span[1]}$\n Trained with {args.loss_type}, Integrated with midpoint"
-    phase_space_plot(ax[2], pred_field, midp_traj, title_midp, args)
+    title_custom = f"Symplectic HNN: $h = {args.h}, t_f = {t_span[1]}$\n Trained with {args.loss_type}, Integrated with {args.loss_type}"
+    phase_space_plot(ax[2], pred_field, pred_traj_custom, title_custom, args)
 
     lim = len(t_eval)//3
     title_both = f"$p$ Coordinate vs. Time \n (Note: smaller t-interval for more clarity)"
     axes = ax[3]
-    axes.plot(t_eval[:lim], exact_traj[:lim, 0], label='exact')
-    axes.plot(t_eval[:lim], pred_traj[:lim, 0], label='pred RK45')
-    axes.plot(midp_t[:lim], midp_traj[:lim, 0], label='pred midp')
+    axes.plot(t_eval[:lim], exact_traj[:lim, 0], label='Exact')
+    axes.plot(t_eval[:lim], pred_traj_rk45[:lim, 0], label='Pred RK45')
+    axes.plot(t_custom[:lim], pred_traj_custom[:lim, 0], label=f'Pred {args.loss_type}')
+    axes.set_xlabel("$t$", fontsize=14)
+    axes.set_ylabel("$p$", rotation=0, fontsize=14)
     axes.legend()
     axes.set_title(title_both)
 
@@ -187,7 +175,7 @@ def final_plot(model, args, t_span=(0, 300)):
 
     # Old code to investigate individual
     #ax[2].plot(t_eval, exact_traj[:, 0], color='blue')
-    #ax[2].plot(t_eval, pred_traj[:, 0], color='red')
+    #ax[2].plot(t_eval, pred_traj_rk45[:, 0], color='red')
 
     # SAVE FIGURE USING USUAL PATH
     plt.savefig(save_path(args, ext='pdf'))

@@ -10,13 +10,13 @@
 import os
 import sys
 import pickle
+from torch.nn import functional
 # import zipfile
 # import imageio
 # import shutil
 # from PIL import Image
 
 from model.args import get_args
-from model.loss import *
 from model.data import *
 
 
@@ -101,51 +101,34 @@ def from_pickle(path):  # load something
     return thing
 
 
-# TODO Replace all these giant cases by dictionaries and simply index them!
+def choose_helper(dict, name, choose_what="Input"):
+    if name in dict.keys():
+        return dict[name]
+    else:
+        raise ValueError(f"{choose_what} not recognized. Possibilities are: " + ", ".join(dict.keys()))
+
+
 def choose_nonlinearity(name):
-    if name == 'tanh':
-        nl = torch.tanh
-    elif name == 'relu':
-        nl = torch.relu
-    elif name == 'sigmoid':
-        nl = torch.sigmoid
-    elif name == 'softplus':
-        nl = torch.nn.functional.softplus
-    elif name == 'selu':
-        nl = torch.nn.functional.selu
-    elif name == 'elu':
-        nl = torch.nn.functional.elu
-    elif name == 'swish':
-        nl = lambda x: x * torch.sigmoid(x)
-    else:
-        raise ValueError("nonlinearity not recognized")
-    return nl
+    nonlinearities = {'tanh': torch.tanh,
+                      'relu': torch.relu,
+                      'sigmoid': torch.sigmoid,
+                      'softplus': torch.nn.functional.softplus,
+                      'selu': torch.nn.functional.selu,
+                      'elu:': torch.nn.functional.elu,
+                      'swish': lambda x: x * torch.sigmoid(x)
+                      }
+
+    return choose_helper(nonlinearities, name, choose_what="Nonlinearity")
 
 
-# TODO Replace all these giant cases by dictionaries and simply index them!
-#       Maybe even register the string-format name automatically from within the respective classes...
-def choose_loss(name):
-    if name == 'euler-symp':
-        loss = EulerSympLoss
-    elif name == 'midpoint':
-        loss = MidpointLoss
-    else:
-        raise ValueError("loss function not recognized")
-    return loss
-
-
-# TODO Replace all these giant cases by dictionaries and simply index them!
-#       Maybe even register the string-format name automatically from within the respective classes...
+# TODO Maybe register the string-format name automatically (in some global dict?) from within the respective classes...
 def choose_data(name):
-    if name == 'spring':
-        data_loader = HarmonicOscillator
-    elif name == 'pendulum':
-        data_loader = NonlinearPendulum
-    elif name == 'fpu':  # FPU = Fermi-Pasta-Ulam (see GNI book)
-        data_loader = FermiPastaUlam
-    else:
-        raise ValueError("data set not recognized")
-    return data_loader
+    datasets = {'spring': HarmonicOscillator,
+                'pendulum': NonlinearPendulum,
+                'fpu': FermiPastaUlam  # FPU = Fermi-Pasta-Ulam (see GNI book)
+                }
+
+    return choose_helper(datasets, name, choose_what="Data set name")
 
 
 def save_path(args, ext='tar'):
