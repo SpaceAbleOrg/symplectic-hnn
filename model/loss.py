@@ -85,4 +85,5 @@ class EulerSympLoss(OneStepLoss):
 
 class MidpointLoss(OneStepLoss):
     def argument(self, x):
-        return (x[:, 1:] + x[:, :-1]) / 2
+        return (x[:, 1:, :] + x[:, :-1, :]) / 2
+        #return (x[:, 1:] + x[:, :-1]) / 2  # la même chose

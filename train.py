@@ -74,6 +74,7 @@ if __name__ == "__main__":
         data_loader = args.data_class(args.h, args.noise)
         data = data_loader.get_dataset(seed=args.seed, samples=args.data_samples,
                                        test_split=args.test_split, print_args=args)
+        print()
         to_pickle(data, data_path)
     else:
         print("Loading the existing data set...")

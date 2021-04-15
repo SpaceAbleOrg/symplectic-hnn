@@ -38,7 +38,7 @@ def final_plot(model, args, t_span=(0, 150)):
 
     # INTEGRATE MODEL
     # TODO how to customize OMEGA ???
-    omega = 50
+    omega = 1
     static_y0 = args.data_class.static_initial_value(omega=omega)
     pred_traj = integrate_model(model, t_span, static_y0, **kwargs)
 

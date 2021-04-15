@@ -193,7 +193,7 @@ class FermiPastaUlam(HamiltonianDataSet):
         """ Returns 2 for the full system's dimensionality: one q position coordinate, one p momentum coordinate. """
         return 12
 
-    def hamiltonian(self, p, q, t=None, omega=50):
+    def hamiltonian(self, p, q, t=None, omega=1):
         H = 1/2 * autograd.numpy.sum(p ** 2)\
             + omega**2 / 4 * autograd.numpy.sum((q[1::2] - q[::2]) ** 2)\
             + q[0] ** 4 + q[-1] ** 4 + autograd.numpy.sum((q[2::2] - q[1:-1:2]) ** 4)  # non-linear springs
