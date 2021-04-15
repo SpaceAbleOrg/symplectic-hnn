@@ -124,18 +124,6 @@ def choose_nonlinearity(name):
 
 # TODO Replace all these giant cases by dictionaries and simply index them!
 #       Maybe even register the string-format name automatically from within the respective classes...
-def choose_loss(name):
-    if name == 'euler-symp':
-        loss = EulerSympLoss
-    elif name == 'midpoint':
-        loss = MidpointLoss
-    else:
-        raise ValueError("loss function not recognized")
-    return loss
-
-
-# TODO Replace all these giant cases by dictionaries and simply index them!
-#       Maybe even register the string-format name automatically from within the respective classes...
 def choose_data(name):
     if name == 'spring':
         data_loader = HarmonicOscillator

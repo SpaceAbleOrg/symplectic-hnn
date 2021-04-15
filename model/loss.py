@@ -10,12 +10,46 @@ def L2_loss(u, v, mean=True):
     return (u - v).pow(2).mean() if mean else (u - v).pow(2)
 
 
+class OneStepScheme(ABC):
+    def __init__(self, args):
+        self.args = args
+
+    @abstractmethod
+    def argument(self, yn, ynplusone):
+        pass
+
+
+class EulerSymplectic(OneStepScheme):
+    def argument(self, yn, ynplusone):
+        pn, qn = torch.split(yn, self.args.dim // 2, dim=-1)
+        pnplusone, qnplusone = torch.split(ynplusone, self.args.dim // 2, dim=-1)
+
+        return torch.cat((pnplusone, qn), dim=-1)
+
+
+class ImplicitMidpoint(OneStepScheme):
+    def argument(self, yn, ynplusone):
+        return (yn + ynplusone) / 2
+
+
+# TODO Replace all these giant cases by dictionaries and simply index them!
+#       Maybe even register the string-format name automatically from within the respective classes...
+def choose_scheme(name):
+    if name == 'euler-symp':
+        loss = EulerSymplectic
+    elif name == 'midpoint':
+        loss = ImplicitMidpoint
+    else:
+        raise ValueError("loss function not recognized")
+    return loss
+
+
 class Loss(ABC):
     def __init__(self, args):
         self.args = args
 
     @abstractmethod
-    def scheme(self, x, t):
+    def prediction(self, x, t):
         pass
 
     def loss(self, model, x, t, return_dist=False):
@@ -49,7 +83,7 @@ class Loss(ABC):
         dxdt_hat = (diff / h).permute(1, 2, 0)
 
         # STEP 2 – APPLY IMPLEMENTED SCHEME TO THE HAMILTONIAN NEURAL NETWORK PREDICTIONS
-        dxdt = self.scheme(model, x)
+        dxdt = self.prediction(model, x)
 
         return L2_loss(dxdt, dxdt_hat, mean=not return_dist)
 
@@ -58,12 +92,15 @@ class Loss(ABC):
 
 
 class OneStepLoss(Loss):
-    @abstractmethod
-    def argument(self, x):
-        pass
+    def __init__(self, args):
+        super().__init__(args)
+        self.scheme = choose_scheme(self.args.loss_type)(self.args)
 
-    def scheme(self, model, x):
-        x = self.argument(x)
+    def prediction(self, model, x):
+        xplusone = x[:, 1:]
+        xn = x[:, :-1]
+
+        x = self.scheme.argument(xn, xplusone)
 
         # Flatten into the HNN shape [X, dim of coords] to call the neural network in vectorized form.
         x_flat = x.flatten(0, 1)
@@ -73,17 +110,3 @@ class OneStepLoss(Loss):
         dxdt = dxdt_flat.view(x.shape)
 
         return dxdt
-
-
-class EulerSympLoss(OneStepLoss):
-    def argument(self, x):
-        # Would prefer np.split(x, 2) and specify two equal parts, but for autograd we need torch
-        P, Q = torch.split(x, self.args.dim//2, dim=-1)
-        x = torch.cat((P[:, 1:], Q[:, :-1]), dim=-1)
-        return x
-
-
-class MidpointLoss(OneStepLoss):
-    def argument(self, x):
-        return (x[:, 1:, :] + x[:, :-1, :]) / 2
-        #return (x[:, 1:] + x[:, :-1]) / 2  # la même chose

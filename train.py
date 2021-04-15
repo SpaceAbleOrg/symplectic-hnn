@@ -9,15 +9,16 @@ import os
 import torch
 import numpy as np
 
+from model.loss import OneStepLoss
 from model.hnn import get_hnn
-from utils import setup_args, choose_loss, save_path, to_pickle, from_pickle
+from utils import setup_args, save_path, to_pickle, from_pickle
 
 
 def train(model, data, args):
     # Create a standard optimizer
     optim = torch.optim.Adam(model.parameters(), args.learn_rate, weight_decay=1e-4)
     # Load the symplectic (or not) loss function
-    loss_fct = choose_loss(args.loss_type)(args)
+    loss_fct = OneStepLoss(args)  # Choosing the actual loss_type is hidden here
 
     # Prepare objects from dataset dictionary
     x = torch.tensor(data['coords'], requires_grad=True, dtype=torch.float32)  # shape (batch_size, dim)
