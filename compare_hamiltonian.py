@@ -5,8 +5,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import setup_args, save_path
-from model.hnn import get_hnn
+from utils import setup_args, save_path, load_model
 
 
 if __name__ == "__main__":
@@ -18,14 +17,9 @@ if __name__ == "__main__":
     for i, h in enumerate(hs):
         args.h = h
 
-        # TODO Reconstruct model size and all (hyper)params from the saved .tar file!
-        if h in (0.1, 0.2):
-            args.hidden_dim = 400
-        else:
-            args.hidden_dim = 200
-
-        model = get_hnn(args)
-        model.load_state_dict(torch.load(save_path(args)))
+        # Loads the model automatically, and rewrites all other args,
+        # i.e. all except name, loss_type, h, noise, to match this model
+        model, args = load_model(args)
 
         data_loader = args.data_class(args.h, args.noise)
 

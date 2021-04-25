@@ -7,9 +7,8 @@ from scipy.integrate import solve_ivp
 from scipy.optimize import fixed_point
 import matplotlib.pyplot as plt
 
-from utils import setup_args, save_path
+from utils import setup_args, save_path, load_model
 from model.loss import choose_scheme
-from model.hnn import get_hnn
 from model.data import get_t_eval
 
 
@@ -182,11 +181,7 @@ def final_plot(model, args, t_span=(0, 300)):
 
 
 if __name__ == "__main__":
-    args = setup_args()
-
-    model = get_hnn(args)
-
-    # Load saved state using the standard save_path
-    model.load_state_dict(torch.load(save_path(args)))
+    args = setup_args()  # Only requires name, loss-type, h, noise (i.e. the information to locate the .tar file)
+    model, args = load_model(args)  # Loads the model and (re)loads all arguments as initially saved after training
 
     final_plot(model, args)
