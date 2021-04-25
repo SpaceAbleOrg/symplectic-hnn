@@ -5,7 +5,8 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import setup_args, save_path, load_model
+from utils import setup_args, save_path
+from model.hnn import load_model
 
 
 if __name__ == "__main__":

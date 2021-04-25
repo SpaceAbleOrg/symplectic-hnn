@@ -7,9 +7,10 @@ from scipy.integrate import solve_ivp
 from scipy.optimize import fixed_point
 import matplotlib.pyplot as plt
 
-from utils import setup_args, save_path, load_model
+from utils import setup_args, save_path
 from model.loss import choose_scheme
 from model.data import get_t_eval
+from model.hnn import load_model
 
 
 def get_predicted_vector_field(model, args, gridsize=20):

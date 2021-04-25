@@ -18,7 +18,6 @@ from torch.nn import functional
 
 from model.args import get_args
 from model.data import *
-from model.hnn import get_hnn
 
 
 # This function is generic, but needs to run in a top-level file to setup the path variables
@@ -139,17 +138,6 @@ def save_path(args, pltname='', ext='tar'):
     if args.noise > 0:
         label += '-n' + str(args.noise)
     return '{}/{}.{}'.format(args.save_dir, label, ext)
-
-
-def load_model(args):
-    saved_dict = torch.load(save_path(args))
-    args = saved_dict['args']  # Loads all other arguments as saved initially when the model was trained
-
-    # Create a model using the same args and load its state_dict
-    model = get_hnn(args)
-    model.load_state_dict(saved_dict['model'])
-
-    return model, args
 
 
 # def make_gif(frames, save_dir, name='pendulum', duration=1e-1, pixels=None, divider=0):

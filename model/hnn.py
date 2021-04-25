@@ -8,7 +8,7 @@
 import torch
 
 from model.standard_nn import MLP
-from utils import symplectic_form
+from utils import symplectic_form, save_path
 
 
 def get_hnn(args):
@@ -19,6 +19,17 @@ def get_hnn(args):
     model = HNN(nn_model)
 
     return model
+
+
+def load_model(args):
+    saved_dict = torch.load(save_path(args))
+    args = saved_dict['args']  # Loads all other arguments as saved initially when the model was trained
+
+    # Create a model using the same args and load its state_dict
+    model = get_hnn(args)
+    model.load_state_dict(saved_dict['model'])
+
+    return model, args
 
 
 class HNN(torch.nn.Module):
