@@ -80,7 +80,6 @@ if __name__ == "__main__":
     else:
         print("Loading the existing data set...")
         data = from_pickle(data_path)
-        # TODO Reconstruct state / parameters / args etc from the 'meta' entry of the pickled dict...
 
     # RUN THE MAIN FUNCTION TO TRAIN THE MODEL
     if not args.new_data:
@@ -88,4 +87,4 @@ if __name__ == "__main__":
 
     # SAVE
     os.makedirs(args.save_dir) if not os.path.exists(args.save_dir) else None
-    torch.save(model.state_dict(), save_path(args))
+    torch.save({'args': args, 'model': model.state_dict()}, save_path(args))
