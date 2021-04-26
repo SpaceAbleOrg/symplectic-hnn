@@ -7,6 +7,9 @@
 # TXT Files and Logs
 *.txt
 
+# TensorBoard runs folder
+runs/
+
 # Data Folders
 simulation-data
 simulation-results
