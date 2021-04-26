@@ -7,8 +7,9 @@
 
 import os
 import copy
-import torch
 import numpy as np
+import torch
+from torch.utils.tensorboard import SummaryWriter
 
 from model.loss import OneStepLoss
 from model.hnn import get_hnn
@@ -27,13 +28,13 @@ def train(model, data, args):
     t = data['t']
     test_t = data['test_t']
 
+    # DO VANILLA TRAINING LOOP
     if args.verbose:
         print("Begin training loop...")
 
     best_model, best_test_loss = model, np.infty
-
-    # DO VANILLA TRAINING LOOP
     stats = {'train_loss': [], 'test_loss': []}
+    writer = SummaryWriter()
     for step in range(args.epochs + 1):
 
         # Use stochastic gradient descent (SGD) with args.batch_size
@@ -47,18 +48,18 @@ def train(model, data, args):
 
         # run test data
         model.eval()
-        test_loss = loss_fct(model, test_x, test_t)
-        test_loss_val = test_loss.item()
+        train_loss_val = loss_fct(model, x, t)
+        test_loss_val = loss_fct(model, test_x, test_t)
 
         if test_loss_val < best_test_loss:
             best_model = copy.deepcopy(model)
             best_test_loss = test_loss_val
 
         # logging
-        #stats['train_loss'].append(loss.item())
-        #stats['test_loss'].append(test_loss_val)
+        writer.add_scalar("Loss/Train", train_loss_val, step)
+        writer.add_scalar("Loss/Test", test_loss_val, step)
+
         if args.verbose and step % args.print_every == 0:
-            train_loss_val = loss_fct(model, x, t)
             print("step {}, train_loss {:.4e}, test_loss {:.4e}".format(step, train_loss_val, test_loss_val))
 
     # Final evaluation using the best_model
