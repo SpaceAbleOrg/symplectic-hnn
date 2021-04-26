@@ -1,6 +1,9 @@
 # HNN Data Files (pickled Python dictionaries)
 *.shnndata
 
+# cProfile Profile Files (used for timing scripts)
+*.prof
+
 # TXT Files and Logs
 *.txt
 

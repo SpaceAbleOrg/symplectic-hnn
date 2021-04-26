@@ -36,7 +36,7 @@ def train(model, data, args):
     stats = {'train_loss': [], 'test_loss': []}
     for step in range(args.epochs + 1):
 
-        # Use stochastic gradient descent (TODO (??) to verify if that's reall SGD) with args.batch_size
+        # Use stochastic gradient descent (SGD) with args.batch_size
         for ixs in torch.split(torch.arange(x.shape[0]), args.batch_size):
             # train step, find loss and optimize
             model.train()
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     model = get_hnn(args)
 
     # LOAD DATA SET
-    data_path = save_path(args, ext='shnndata')
+    data_path = save_path(args, ext='shnndata', incl_loss=False)
     if args.new_data or not os.path.exists(data_path):
         print("Generating a new data set...")
         data_loader = args.data_class(args.h, args.noise)

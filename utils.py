@@ -121,7 +121,6 @@ def choose_nonlinearity(name):
     return choose_helper(nonlinearities, name, choose_what="Nonlinearity")
 
 
-# TODO Maybe register the string-format name automatically (in some global dict?) from within the respective classes...
 def choose_data(name):
     datasets = {'spring': HarmonicOscillator,
                 'pendulum': NonlinearPendulum,
@@ -131,8 +130,10 @@ def choose_data(name):
     return choose_helper(datasets, name, choose_what="Data set name")
 
 
-def save_path(args, pltname='', ext='tar'):
-    label = args.name + '-' + args.loss_type + '-h' + str(args.h)
+def save_path(args, pltname='', ext='tar', incl_loss=True):
+    label = args.name + '-h' + str(args.h)
+    if incl_loss:
+        label += '-' + args.loss_type
     if pltname:
         label = pltname + '-' + label
     if args.noise > 0:
