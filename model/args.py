@@ -19,7 +19,7 @@ def get_args():
     parser.add_argument('--nonlinearity', default='tanh', type=str, help='neural net nonlinearity')
     parser.add_argument('--learn_rate', default=1e-3, type=float, help='learning rate')
     parser.add_argument('--epochs', default=1000, type=int, help='number of gradient steps')
-    parser.add_argument('--batch_size', default=500, type=int, help='number of data points used together in one batch')
+    parser.add_argument('--batch_size', default=64, type=int, help='number of data points used together in one batch')
 
     # SCIENTIFIC ARGUMENTS (all optional)
     parser.add_argument('--loss_type', default='midpoint', type=str,
@@ -29,7 +29,7 @@ def get_args():
     parser.add_argument('--new_data', dest='new_data', action='store_true',
                         help='do not use stored dataset, re-create a full dataset from scratch instead')
     parser.add_argument('--data_samples', default=3000, type=int, help='number of samples in datasets')
-    parser.add_argument('--test_split', default=0.1, type=float, help='percentage size of testing/validation dataset')
+    parser.add_argument('--test_split', default=0.2, type=float, help='percentage size of testing/validation dataset')
 
     # OTHER ARGUMENTS (all optional)
     # Use time in seconds as random seed by default
