@@ -101,6 +101,9 @@ class HamiltonianDataSet(ABC):
             ys.append(y)
             ts.append(t)
 
+        if print_args.verbose:
+            print()  # to not overwrite the previous lines because they ended in \r
+
         coords = np.array(ys).squeeze()
         # Also add t to the data (although all rows will usually be the same)
         t = np.array(ts).squeeze()

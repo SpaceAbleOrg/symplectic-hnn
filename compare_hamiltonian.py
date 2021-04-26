@@ -1,20 +1,40 @@
 # Symplectic Hamiltonian Neural Networks | 2021
 # Florian Méhats and Marco David
 
+import os
 import torch
+from joblib import Parallel, delayed
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 from utils import setup_args, save_path
 from model.hnn import load_model
+from train import main
 
 
 if __name__ == "__main__":
-    hs = [0.4, 0.2, 0.1, 0.05, 0.025, 0.0125]
+    hs = [1.6, 0.8, 0.4, 0.2, 0.1]
     errors = np.zeros(len(hs))
 
     args = setup_args()
 
+    # Train the models in parallel (!) if they do not exist
+    def f(h):
+        args.h = h
+        return not os.path.exists(save_path(args))
+
+    def g(h):
+        args.h = h
+        args.new_data = False
+        args.verbose = False
+        main(args)
+
+    h_missing = list(filter(f, hs))
+    print(h_missing)
+    results = Parallel(n_jobs=-1, verbose=True)(delayed(g)(h) for h in h_missing)
+
+    # Calculate the actual Hamiltonian errors
     for i, h in enumerate(hs):
         args.h = h
 
@@ -45,5 +65,5 @@ if __name__ == "__main__":
     plt.title("Average Error of Hamiltonian vs. Time Step $h$ \n (Averaged over the relevant phase space $\Omega$)",
               pad=10)
 
-    plt.savefig(save_path(args, pltname='herr', ext='pdf'))
+    plt.savefig(save_path(args, pltname='herr', ext='pdf', incl_h=False))
     plt.show()

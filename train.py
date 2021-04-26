@@ -72,22 +72,23 @@ def train(model, data, args):
     return best_model, stats
 
 
-if __name__ == "__main__":
-    # SETUP AND LOAD ARGUMENTS, CREATE EMPTY MODEL
-    args = setup_args()
+def main(args):
+    # CREATE THE EMPTY MODEL
     model = get_hnn(args)
 
     # LOAD DATA SET
     data_path = save_path(args, ext='shnndata', incl_loss=False)
     if args.new_data or not os.path.exists(data_path):
-        print("Generating a new data set...")
+        if args.verbose:
+            print("Generating a new data set...")
+
         data_loader = args.data_class(args.h, args.noise)
         data = data_loader.get_dataset(seed=args.seed, samples=args.data_samples,
                                        test_split=args.test_split, print_args=args)
-        print()
         to_pickle(data, data_path)
     else:
-        print("Loading the existing data set...")
+        if args.verbose:
+            print("Loading the existing data set...")
         data = from_pickle(data_path)
 
     # RUN THE MAIN FUNCTION TO TRAIN THE MODEL
@@ -97,3 +98,9 @@ if __name__ == "__main__":
         # SAVE
         os.makedirs(args.save_dir) if not os.path.exists(args.save_dir) else None
         torch.save({'args': args, 'model': model.state_dict()}, save_path(args))
+
+
+if __name__ == "__main__":
+    # SETUP AND LOAD ARGUMENTS
+    args = setup_args()
+    main(args)

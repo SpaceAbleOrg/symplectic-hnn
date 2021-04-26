@@ -130,8 +130,10 @@ def choose_data(name):
     return choose_helper(datasets, name, choose_what="Data set name")
 
 
-def save_path(args, pltname='', ext='tar', incl_loss=True):
-    label = args.name + '-h' + str(args.h)
+def save_path(args, pltname='', ext='tar', incl_h=True, incl_loss=True):
+    label = args.name
+    if incl_h:
+        label += '-h' + str(args.h)
     if incl_loss:
         label += '-' + args.loss_type
     if pltname:
