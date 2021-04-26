@@ -21,7 +21,12 @@ class OneStepScheme(ABC):
         pass
 
 
-class EulerSymplectic(OneStepScheme):
+class ForwardEuler(OneStepScheme):
+    def argument(self, yn, ynplusone):
+        return yn
+
+
+class SymplecticEuler(OneStepScheme):
     def argument(self, yn, ynplusone):
         pn, qn = torch.split(yn, self.args.dim // 2, dim=-1)
         pnplusone, qnplusone = torch.split(ynplusone, self.args.dim // 2, dim=-1)
@@ -34,9 +39,9 @@ class ImplicitMidpoint(OneStepScheme):
         return (yn + ynplusone) / 2
 
 
-# TODO Maybe register the string-format name automatically (in some global dict?) from within the respective classes...
 def choose_scheme(name):
-    schemes = {'euler-symp': EulerSymplectic,
+    schemes = {'euler-forw': ForwardEuler,
+               'euler-symp': SymplecticEuler,
                'midpoint': ImplicitMidpoint
                }
 
