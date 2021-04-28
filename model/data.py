@@ -51,7 +51,7 @@ class HamiltonianDataSet(ABC):
 
     def dynamics_fn(self, t, coords):
         gradH = autograd.grad(self.bundled_hamiltonian)(coords, t=t)
-        J = symplectic_form(gradH.shape[0])
+        J = symplectic_form(self.dimension())  # gradH.shape[0] should be just self.dimension()
         return J.T @ gradH
 
     @staticmethod
@@ -174,9 +174,9 @@ class NonlinearPendulum(HamiltonianDataSet):
 
     @staticmethod
     def random_initial_value():
-        """ Start at a random initial point between (-π, +π) rad, with initial momentum in [-1, +1]. """
+        """ Start at a random initial point and initial momentum, respectively between (-π, +π) rad. """
         theta = 2 * np.pi * (np.random.rand() - 1/2)
-        p = 2 * np.random.rand() - 1
+        p = 2 * np.pi * (np.random.rand() - 1/2)
         return np.array([p, theta])
 
     @staticmethod

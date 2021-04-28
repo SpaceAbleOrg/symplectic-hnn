@@ -60,13 +60,15 @@ def integrate_model_custom(model, t_span, y0, args):
     ts = [t]
 
     while t <= t_span[1]:
-        # Alternative to scipy's fixed_point: Iterate the function myself, say 10 times for an error h^10.
-        # yn = y
-        # for i in range(10):
-        #    y = iter_fn(y, yn, args.h, dim, model, scheme)
+        # Alternative to scipy's fixed_point: Iterate the function by hand, say 10 times for an error h^10.
+        #yn = y
+        #for i in range(10):
+        #    y = iter_fn(y, yn, args.h)
 
-        y = fixed_point(iter_fn, y, args=(y, args.h), xtol=1e-4)  # method='iteration' possible, too, without accelerated convergence
-        # xtol=1e-8 not attainable with <500 iterations
+        # Kwarg method='iteration' possible, too, without accelerated convergence
+        # Kwarg xtol=1e-8 normally not attainable with <500 iterations
+        y = fixed_point(iter_fn, y, args=(y, args.h), xtol=1e-4)
+
         ys.append(y)
         t += args.h
         ts.append(t)

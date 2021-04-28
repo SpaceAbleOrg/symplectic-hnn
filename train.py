@@ -18,7 +18,10 @@ from utils import setup_args, save_path, to_pickle, from_pickle
 
 def train(model, data, args):
     # Create a standard optimizer
-    optim = torch.optim.Adam(model.parameters(), args.learn_rate, weight_decay=1e-4)
+    # optim = torch.optim.Adam(model.parameters(), args.learn_rate, weight_decay=1e-4)
+    optim = torch.optim.AdamW(model.parameters(), args.learn_rate, betas=(0.9, 0.999), eps=1e-08,
+                              weight_decay=0.01, amsgrad=True)
+
     # Load the symplectic (or not) loss function
     loss_fct = OneStepLoss(args)  # Choosing the actual loss_type is hidden in this constructor
 
