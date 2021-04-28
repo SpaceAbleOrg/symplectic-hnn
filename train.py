@@ -54,7 +54,7 @@ def train(model, data, args):
         train_loss_val = loss_fct(model, x, t)
         test_loss_val = loss_fct(model, test_x, test_t)
 
-        if test_loss_val < best_test_loss:
+        if step > args.epochs/2 and test_loss_val < best_test_loss:
             best_model = copy.deepcopy(model)
             best_test_loss = test_loss_val
 
