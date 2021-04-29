@@ -43,7 +43,7 @@ def integrate_model_rk45(model, t_span, y0, fun=None, **kwargs):
 
 
 def integrate_model_custom(model, t_span, y0, args):
-    dim = args.dim  # assert == np.size(y0)
+    dim = args.dim  # assert dim == np.size(y0)
     scheme = choose_scheme(args.loss_type)(args)
 
     def iter_fn(y_var, yn, h):
@@ -77,12 +77,14 @@ def integrate_model_custom(model, t_span, y0, args):
     # return np.array(ys)
 
 
-def phase_space_helper(axes, boundary, title):
+def phase_space_helper(axes, boundary, title, aspect_equal=False):
     """ Sets up a phase space plot with the correct axis labels, boundaries and title. """
     axes.set_xlabel("$p$", fontsize=14)
     axes.set_ylabel("$q$", rotation=0, fontsize=14)
     axes.set_title(title, pad=10)
-    axes.set_aspect('equal')
+
+    if aspect_equal:
+        axes.set_aspect('equal')
 
     if boundary:
         axes.set_xlim(boundary)
