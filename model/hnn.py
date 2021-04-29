@@ -8,7 +8,8 @@
 import torch
 
 from model.standard_nn import MLP
-from utils import symplectic_form, save_path
+from model.data import symplectic_form
+from utils import save_path
 
 
 def get_hnn(args):
@@ -34,6 +35,7 @@ def load_model(args):
 
 class HNN(torch.nn.Module):
     """ Learn arbitrary Hamiltonian vector fields that are the symplectic derivative of a scalar function H """
+
     def __init__(self, differentiable_model):
         super().__init__()
         self.differentiable_model = differentiable_model
@@ -56,3 +58,21 @@ class HNN(torch.nn.Module):
         # An alternative string for this batch operation would be 'ij,...j->...i' to not specify the extra dims.
 
         return vector_field
+
+
+class CorrectedHNN:
+    """ Use an HNN but correct the learned modified Hamiltonian to actually
+        and accurately predict the real Hamiltonian. """
+
+    def __init__(self, hnn, scheme, h):
+        super().__init__()
+        self.hnn = hnn
+        self.scheme = scheme
+        self.h = h
+
+    def corrected_forward(self, x):
+        hamiltonian = self.hnn(x)
+        hamiltonian_corrected = self.scheme.corrected(hamiltonian, x, self.h)
+        return hamiltonian_corrected
+
+    __call__ = corrected_forward

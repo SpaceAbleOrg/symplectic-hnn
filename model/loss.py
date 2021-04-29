@@ -1,6 +1,8 @@
 # Symplectic Hamiltonian Neural Networks | 2021
 # Marco David
 
+import warnings
+
 import torch
 import numpy as np
 from abc import ABC, abstractmethod
@@ -26,17 +28,42 @@ class ForwardEuler(OneStepScheme):
         return yn
 
 
-class SymplecticEuler(OneStepScheme):
+class SymplecticOneStepScheme(OneStepScheme, ABC):
+    @abstractmethod
+    def corrected(self, hamiltonian, x, h, order):
+        pass
+
+
+class SymplecticEuler(SymplecticOneStepScheme):
     def argument(self, yn, ynplusone):
         pn, qn = torch.split(yn, self.args.dim // 2, dim=-1)
         pnplusone, qnplusone = torch.split(ynplusone, self.args.dim // 2, dim=-1)
 
         return torch.cat((pnplusone, qn), dim=-1)
 
+    def corrected(self, hamiltonian, x, h, order=1):
+        if order > 1:
+            raise NotImplementedError("Higher order corrections are not (yet) implemented.")
 
-class ImplicitMidpoint(OneStepScheme):
+        dH = torch.autograd.grad(hamiltonian.sum(), x)[0]
+        dH_p, dH_q = torch.split(dH, self.args.dim // 2, dim=-1)
+
+        # Calculate the first-order correction to the Hamiltonian
+        correction = hamiltonian - h/2 * torch.dot(dH_p, dH_q)
+        return correction
+
+
+class ImplicitMidpoint(SymplecticOneStepScheme):
     def argument(self, yn, ynplusone):
         return (yn + ynplusone) / 2
+
+    def corrected(self, hamiltonian, x, h, order=1):
+        if order > 1:
+            raise NotImplementedError("Higher order corrections are not (yet) implemented.")
+
+        warnings.warn("The midpoint rule has no first order correction. Calling its `corrected` method is not yet"
+                      "supported and simply is the identity function for now.", RuntimeWarning)
+        return hamiltonian
 
 
 def choose_scheme(name):

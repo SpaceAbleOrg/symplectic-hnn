@@ -10,6 +10,8 @@
 import os
 import sys
 import pickle
+import numpy as np
+import torch
 from torch.nn import functional
 # import zipfile
 # import imageio
@@ -17,7 +19,7 @@ from torch.nn import functional
 # from PIL import Image
 
 from model.args import get_args
-from model.data import *
+from model.data import HarmonicOscillator, NonlinearPendulum, FermiPastaUlam
 
 
 # This function is generic, but needs to run in a top-level file to setup the path variables
@@ -121,6 +123,7 @@ def choose_nonlinearity(name):
     return choose_helper(nonlinearities, name, choose_what="Nonlinearity")
 
 
+# This function cannot be moved inside data.py because that would cause a circular import!
 def choose_data(name):
     datasets = {'spring': HarmonicOscillator,
                 'pendulum': NonlinearPendulum,
