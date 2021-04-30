@@ -45,11 +45,15 @@ class SymplecticEuler(SymplecticOneStepScheme):
         if order > 1:
             raise NotImplementedError("Higher order corrections are not (yet) implemented.")
 
-        dH = torch.autograd.grad(hamiltonian.sum(), x)[0]
+        hamiltonian = hamiltonian.squeeze(-1)  # TODO verify that this is the correct dim to squeeze
+
+        # The sum is over the remaining 'batch' dimension which allows vectorization of the network
+        dH = torch.autograd.grad(hamiltonian.sum(), x, create_graph=True)[0]
         dH_p, dH_q = torch.split(dH, self.args.dim // 2, dim=-1)
 
-        # Calculate the first-order correction to the Hamiltonian
-        correction = hamiltonian - h/2 * torch.dot(dH_p, dH_q)
+        # Calculate the first-order correction to the Hamiltonian for the SympEuler scheme
+        # The einsum realizes a batch dot product between dH_p and dH_q
+        correction = hamiltonian - h/2 * torch.einsum('ai,ai->a', dH_p, dH_q)
         return correction
 
 

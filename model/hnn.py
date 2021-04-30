@@ -60,19 +60,20 @@ class HNN(torch.nn.Module):
         return vector_field
 
 
-class CorrectedHNN:
+class CorrectedHNN(HNN):
     """ Use an HNN but correct the learned modified Hamiltonian to actually
         and accurately predict the real Hamiltonian. """
 
-    def __init__(self, hnn, scheme, h):
-        super().__init__()
-        self.hnn = hnn
+    def __init__(self, differentiable_model, scheme, h):
+        super().__init__(differentiable_model)
         self.scheme = scheme
         self.h = h
 
-    def corrected_forward(self, x):
-        hamiltonian = self.hnn(x)
+    @staticmethod
+    def get(hnn, scheme, h):
+        return CorrectedHNN(hnn.differentiable_model, scheme, h)
+
+    def forward(self, x):
+        hamiltonian = super().forward(x)
         hamiltonian_corrected = self.scheme.corrected(hamiltonian, x, self.h)
         return hamiltonian_corrected
-
-    __call__ = corrected_forward

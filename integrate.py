@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from utils import setup_args, save_path
 from model.loss import choose_scheme
 from model.data import get_t_eval
-from model.hnn import load_model
+from model.hnn import load_model, CorrectedHNN
 
 
 def get_predicted_vector_field(model, args, gridsize=20):
@@ -121,12 +121,17 @@ def plot_helper(axes, x, y, title=None):
 
 def final_plot(model, args, t_span=(0, 300)):
     t_eval = get_t_eval(t_span, args.h)
+    kwargs = {'t_eval': t_eval, 'rtol': 1e-6, 'method': 'RK45'}
 
     # INTEGRATE MODEL
     static_y0 = args.data_class.static_initial_value()
     pred_field = get_predicted_vector_field(model, args)
-    pred_traj_rk45 = integrate_model_rk45(model, t_span, static_y0, t_eval=t_eval, rtol=1e-6, method='RK45')
+    pred_traj_rk45 = integrate_model_rk45(model, t_span, static_y0, **kwargs)
     pred_traj_custom, t_custom = integrate_model_custom(model, t_span, static_y0, args)
+
+    scheme = choose_scheme(args.loss_type)(args)
+    corrected_model = CorrectedHNN.get(model, scheme, args.h)
+    pred_traj_corrected = integrate_model_rk45(corrected_model, t_span, static_y0, **kwargs)
 
     # Calculate the Hamiltonian along the trajectory
     #H = model.forward(torch.tensor(pred_traj_rk45, dtype=torch.float32)).data.numpy()
@@ -146,8 +151,8 @@ def final_plot(model, args, t_span=(0, 300)):
     #H_error = np.abs(H - Hy0)
 
     # === BEGIN PLOTTING ===
-    fig = plt.figure(figsize=(25, 6), facecolor='white', dpi=300)
-    ax = [fig.add_subplot(1, 4, i + 1, frameon=True) for i in range(4)]  # kwarg useful sometimes: aspect='equal'
+    fig = plt.figure(figsize=(28, 6), facecolor='white', dpi=300)
+    ax = [fig.add_subplot(1, 5, i + 1, frameon=True) for i in range(5)]  # kwarg useful sometimes: aspect='equal'
 
     title_true = f"True Trajectory\n (Integrated with RK45)"
     phase_space_plot(ax[0], exact_field, exact_traj, title_true, args)
@@ -158,12 +163,16 @@ def final_plot(model, args, t_span=(0, 300)):
     title_custom = f"Symplectic HNN: $h = {args.h}, t_f = {t_span[1]}$\n Trained with {args.loss_type}, Integrated with {args.loss_type}"
     phase_space_plot(ax[2], pred_field, pred_traj_custom, title_custom, args)
 
+    title_corr = f"Corrected Trajectory"
+    phase_space_plot(ax[3], pred_field, pred_traj_corrected, title_corr, args)
+
     lim = len(t_eval)//3
     title_both = f"$p$ Coordinate vs. Time \n (Note: smaller t-interval for more clarity)"
-    axes = ax[3]
+    axes = ax[4]
     axes.plot(t_eval[:lim], exact_traj[:lim, 0], label='Exact')
     axes.plot(t_eval[:lim], pred_traj_rk45[:lim, 0], label='Pred RK45')
     axes.plot(t_custom[:lim], pred_traj_custom[:lim, 0], label=f'Pred {args.loss_type}')
+    axes.plot(t_eval[:lim], pred_traj_corrected[:lim, 0], label='Pred Corrected')
     axes.set_xlabel("$t$", fontsize=14)
     axes.set_ylabel("$p$", rotation=0, fontsize=14)
     axes.legend()
