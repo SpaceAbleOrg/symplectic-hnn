@@ -76,8 +76,9 @@ class ImplicitMidpoint(SymplecticOneStepScheme):
         return (yn + ynplusone) / 2
 
     def corrected(self, hamiltonian, x, h, order=1):
-        if order > 1:
-            raise NotImplementedError("Higher order corrections are not (yet) implemented.")
+        MAX = 1
+        if order > MAX:
+            raise NotImplementedError(f"Higher order corrections (> {MAX}) are not (yet) implemented.")
 
         warnings.warn("The midpoint rule has no first order correction. Calling its `corrected` method is not yet"
                       "supported and simply is the identity function for now.", RuntimeWarning)

@@ -6,6 +6,7 @@ import torch
 from joblib import Parallel, delayed
 
 import numpy as np
+from matplotlib import cm
 import matplotlib.pyplot as plt
 
 from utils import setup, save_path
@@ -33,10 +34,11 @@ def hamiltonian_error_grid(model, data_loader):
 
     # Return the meshgrid space and the Hamiltonian error
     # VERSION 1
-    #return P, Q, H - H0_pred - H_grid
+    return P, Q, H - H0_pred - H_grid
+
     # VERSION 2
-    diff = H - H_grid
-    return P, Q, diff - diff.mean()
+    #diff = H - H_grid
+    #return P, Q, diff - diff.mean()
 
 
 def hamiltonian_error_random(model, data_loader, N=2000):
@@ -47,15 +49,16 @@ def hamiltonian_error_random(model, data_loader, N=2000):
     y0 = torch.tensor(np.array(y0_list), dtype=torch.float32, requires_grad=True)
     zero_tensor = torch.tensor(np.zeros(dim), dtype=torch.float32, requires_grad=True).view(1, dim)
 
-    H_pred = model.forward(y0).detach().numpy()
-    H0 = model.forward(zero_tensor).detach().numpy()
+    H_pred = model.forward(y0).detach().numpy().squeeze(-1)
+    H0 = model.forward(zero_tensor).detach().numpy().squeeze(-1)
     H_exact = np.array([data_loader.bundled_hamiltonian(y) for y in y0_list])
 
     # VERSION 1
-    #return H_pred - H0 - H_exact
+    return H_pred - H0 - H_exact
+
     # VERSION 2
-    diff = H_pred - H_exact
-    return diff - diff.mean()
+    #diff = H_pred - H_exact
+    #return diff - diff.mean()
 
 
 # THIS FILE CANNOT BE RUN WITH 'prompt' AS ITS NAME.
@@ -85,7 +88,8 @@ if __name__ == "__main__":
     # Set up the subplots
     N = len(hs)+1
     fig = plt.figure(figsize=(6*N, 6), facecolor='white', dpi=300)
-    ax = [fig.add_subplot(1, N, i+1, frameon=True) for i in range(N)]  # kwarg useful sometimes: aspect='equal'
+    ax = [fig.add_subplot(1, N, i+1, projection='3d') for i in range(N-1)]  # kwarg useful sometimes: aspect='equal'
+    axN = fig.add_subplot(1, N, N, frameon=True)
 
     # Calculate the actual Hamiltonian errors
     for i, h in enumerate(hs):
@@ -100,14 +104,15 @@ if __name__ == "__main__":
         dim = data_loader.dimension()
 
         # TO BE CHANGED BY THE USER:
-        use_model = corrected_model
+        use_model = model #corrected_model
 
         # ----- MAP THE HAMILTONIAN ERROR ON A MESHGRID -----
         P, Q, H_err = hamiltonian_error_grid(use_model, data_loader)
 
-        CS = ax[i].contour(P, Q, H_err)
+        CS = ax[i].plot_surface(P, Q, H_err, cmap=cm.coolwarm)
         ax[i].set_title(f"Hamiltonian Error for $h={h}$ in phase space")
-        ax[i].clabel(CS, inline=True, fontsize=10)
+        ax[i].set_zlim(-1, 1)
+        #ax[i].clabel(CS, inline=True, fontsize=10)
 
         # ----- SAMPLE HAMILTONIAN ERROR FROM RANDOM INITIAL VALUES -----
         H_err = hamiltonian_error_random(use_model, data_loader)
@@ -118,15 +123,15 @@ if __name__ == "__main__":
 
     # Error Plot for all h's
     err = np.array(errors_sampled)
-    ax[N-1].loglog(hs, hs, 'r-', label='order $h$')  # y = px, straight line with slope of order p
-    ax[N-1].loglog(hs, [h**2 for h in hs], 'r-', label='order $h^2$')  # y = px, straight line with slope of order p
-    ax[N-1].errorbar(hs, err[:, 0], yerr=err[:, 1], fmt='X-', label='error')
+    axN.loglog(hs, hs, 'r-', label='order $h$')  # y = px, straight line with slope of order p
+    axN.loglog(hs, [h**2 for h in hs], 'r-', label='order $h^2$')  # y = px, straight line with slope of order p
+    axN.errorbar(hs, err[:, 0], yerr=err[:, 1], fmt='X-', label='error')
 
-    ax[N-1].set_xlabel("$h$", fontsize=14)
-    ax[N-1].set_ylabel(r"$\varepsilon_H$", rotation=0, fontsize=14)
-    ax[N-1].set_title("Average Error of Hamiltonian vs. Time Step $h$ \n (Averaged over the relevant phase space $\Omega$)",
+    axN.set_xlabel("$h$", fontsize=14)
+    axN.set_ylabel(r"$\varepsilon_H$", rotation=0, fontsize=14)
+    axN.set_title("Average Error of Hamiltonian vs. Time Step $h$ \n (Averaged over the relevant phase space $\Omega$)",
               pad=10)
-    ax[N-1].legend()
+    axN.legend()
 
     fig.tight_layout()
     plt.savefig(save_path(args, pltname='herr', ext='pdf', incl_h=False))

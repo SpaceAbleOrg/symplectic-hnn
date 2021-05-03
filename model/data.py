@@ -47,7 +47,7 @@ class HamiltonianDataSet(ABC):
         pass
 
     def bundled_hamiltonian(self, coords, t=None):
-        return self.hamiltonian(*np.split(coords, 2), t=t)
+        return self.hamiltonian(*np.split(coords, 2), t=t).squeeze()
 
     def dynamics_fn(self, t, coords):
         gradH = autograd.grad(self.bundled_hamiltonian)(coords, t=t)
