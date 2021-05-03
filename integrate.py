@@ -7,7 +7,8 @@ from scipy.integrate import solve_ivp
 from scipy.optimize import fixed_point
 import matplotlib.pyplot as plt
 
-from utils import setup, save_path, load_args
+from utils import setup, save_path
+from model.args import load_args
 from model.loss import choose_scheme
 from model.data import get_t_eval
 from model.hnn import HNN, CorrectedHNN

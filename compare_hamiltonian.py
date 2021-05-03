@@ -8,7 +8,8 @@ from joblib import Parallel, delayed
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import setup, load_args, save_path
+from utils import setup, save_path
+from model.args import load_args
 from model.loss import choose_scheme
 from model.hnn import HNN, CorrectedHNN
 from train import train_main
@@ -91,7 +92,7 @@ if __name__ == "__main__":
         dim = data_loader.dimension()
 
         # TO BE CHANGED BY THE USER:
-        use_model = model  #corrected_model
+        use_model = corrected_model
 
         # ----- MAP THE HAMILTONIAN ERROR ON A MESHGRID -----
         P, Q, H_err = hamiltonian_error_grid(use_model, data_loader)

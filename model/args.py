@@ -2,11 +2,13 @@
 # Marco David
 
 import time
-import argparse
+import itertools
+
+from argparse import ArgumentParser, Namespace
 
 
-def get_args(return_dict=False):
-    parser = argparse.ArgumentParser(description=None)
+def get_args():
+    parser = ArgumentParser(description=None)
 
     # MAIN ARGUMENT (non-optional)
     parser.add_argument('name', type=str, help='choose the system and data set')
@@ -40,3 +42,46 @@ def get_args(return_dict=False):
 
     args = parser.parse_args()  # is a Namespace object
     return args
+
+
+def process_list(input_string):
+    return map(str.strip, input_string.split(','))
+
+
+def prompt():
+    name = input("Which model (data set name) do you want to use ?")
+
+    loss_type_list = process_list(input("Which numerical method for training (default midpoint) ?"))
+    h_list = process_list(input("Which step size h (default 0.1) ?"))
+    # noise = process_list(input("Which level of noise (default none) ?"))
+
+    args_list = []
+    for loss_type, h in itertools.product(loss_type_list, h_list):
+        args = {'name': name}
+        if loss_type:
+            args['loss_type'] = loss_type
+        if h:
+            args['h'] = float(h)
+        # if noise:
+        #    args['noise'] = float(noise)
+
+        args_list.append(args)
+
+    return args_list
+
+
+def load_args():
+    """ Loads all possible combinations of arguments provided by the user. Returns a generator object. """
+    # Load arguments
+    args = get_args()
+
+    if isinstance(args, Namespace):
+        args = args.__dict__
+
+    # Allow for prompt
+    if args['name'] == "prompt":
+        for prompt_res in prompt():
+            yield Namespace(**(args | prompt_res))
+            # read the dict union as: args, updated and overwritten with the keys/values from prompt_res
+    else:
+        yield Namespace(**args)

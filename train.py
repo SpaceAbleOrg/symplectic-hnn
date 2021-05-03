@@ -13,7 +13,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from model.loss import OneStepLoss
 from model.hnn import HNN
-from utils import setup, load_args, save_path, to_pickle, from_pickle
+from model.args import load_args
+from utils import setup, save_path, to_pickle, from_pickle
 
 
 def train(model, data, args):
