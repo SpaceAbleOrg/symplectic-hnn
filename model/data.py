@@ -176,12 +176,12 @@ class NonlinearPendulum(HamiltonianDataSet):
     def random_initial_value():
         """ Start at a random initial point and initial momentum, respectively between (-π, +π) rad. """
         theta = 4 * np.pi * (np.random.rand() - 1/2)
-        p = 4 * np.pi * (np.random.rand() - 1/2)
+        p = 2 * np.pi * (np.random.rand() - 1/2)
         return np.array([p, theta])
 
     @staticmethod
     def static_initial_value():
-        return np.array([0., 3])
+        return np.array([0.2, 2.5])
 
     @staticmethod
     def plot_boundaries():

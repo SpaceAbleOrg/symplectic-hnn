@@ -10,6 +10,8 @@
 import os
 import sys
 import pickle
+import itertools
+from argparse import Namespace
 import numpy as np
 import torch
 from torch.nn import functional
@@ -22,25 +24,52 @@ from model.args import get_args
 from model.data import HarmonicOscillator, NonlinearPendulum, FermiPastaUlam
 
 
-# This function is generic, but needs to run in a top-level file to setup the path variables
-# and define the save_directory properly.
-def setup_args():
+def process_list(input_string):
+    return map(str.strip, input_string.split(','))
+
+
+def prompt():
+    name = input("Which model (data set name) do you want to use ?")
+
+    loss_type_list = process_list(input("Which numerical method for training (default midpoint) ?"))
+    h_list = process_list(input("Which step size h (default 0.1) ?"))
+    # noise = process_list(input("Which level of noise (default none) ?"))
+
+    args_list = []
+    for loss_type, h in itertools.product(loss_type_list, h_list):
+        args = {'name': name}
+        if loss_type:
+            args['loss_type'] = loss_type
+        if h:
+            args['h'] = float(h)
+        # if noise:
+        #    args['noise'] = float(noise)
+
+        args_list.append(args)
+
+    return args_list
+
+
+def load_args():
+    """ Loads all possible combinations of arguments provided by the user. Returns a generator object. """
     # Load arguments
     args = get_args()
 
-    # Allow for prompt
-    if args.name == "prompt":
-        args.name = input("Which model (data set name) do you want to use ?")
-        loss_type = input("Which numerical method for training (default midpoint) ?")
-        if loss_type:
-            args.loss_type = loss_type
-        h = input("Which step size h (default 0.1) ?")
-        if h:
-            args.h = float(h)
-        noise = input("Which level of noise (default none) ?")
-        if noise:
-            args.noise = float(noise)
+    if isinstance(args, Namespace):
+        args = args.__dict__
 
+    # Allow for prompt
+    if args['name'] == "prompt":
+        for prompt_res in prompt():
+            yield Namespace(**(args | prompt_res))
+            # read the dict union as: args, updated and overwritten with the keys/values from prompt_res
+    else:
+        yield Namespace(**args)
+
+
+# This function is generic, but needs to run in a top-level file to setup the path variables
+# and define the save_directory properly.
+def setup(args):
     # Setup directory of this file as working (save) directory
     this_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(this_dir)
@@ -107,7 +136,7 @@ def choose_helper(dict, name, choose_what="Input"):
     if name in dict.keys():
         return dict[name]
     else:
-        raise ValueError(f"{choose_what} not recognized. Possibilities are: " + ", ".join(dict.keys()))
+        raise ValueError(f"{choose_what} not recognized: {name}. Possibilities are: " + ", ".join(dict.keys()))
 
 
 def choose_nonlinearity(name):

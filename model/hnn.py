@@ -12,29 +12,29 @@ from model.data import symplectic_form
 from utils import save_path
 
 
-def get_hnn(args):
-    # Create the standard MLP with args.dim inputs and one single scalar output, the Hamiltonian
-    nn_model = MLP(hidden_layers=args.hidden_layers, input_dim=args.dim, hidden_dim=args.hidden_dim, output_dim=1,
-                   nonlinearity=args.nonlinearity)
-    # Use this model to create a Hamiltonian Neural Network, which knows how to differentiate the Hamiltonian
-    model = HNN(nn_model)
-
-    return model
-
-
-def load_model(args):
-    saved_dict = torch.load(save_path(args))
-    args = saved_dict['args']  # Loads all other arguments as saved initially when the model was trained
-
-    # Create a model using the same args and load its state_dict
-    model = get_hnn(args)
-    model.load_state_dict(saved_dict['model'])
-
-    return model, args
-
-
 class HNN(torch.nn.Module):
     """ Learn arbitrary Hamiltonian vector fields that are the symplectic derivative of a scalar function H """
+
+    @staticmethod
+    def create(args):
+        # Create the standard MLP with args.dim inputs and one single scalar output, the Hamiltonian
+        nn_model = MLP(hidden_layers=args.hidden_layers, input_dim=args.dim, hidden_dim=args.hidden_dim, output_dim=1,
+                       nonlinearity=args.nonlinearity)
+        # Use this model to create a Hamiltonian Neural Network, which knows how to differentiate the Hamiltonian
+        model = HNN(nn_model)
+
+        return model
+
+    @staticmethod
+    def load(args):
+        saved_dict = torch.load(save_path(args))
+        args = saved_dict['args']  # Loads all other arguments as saved initially when the model was trained
+
+        # Create a model using the same args and load its state_dict
+        model = HNN.create(args)
+        model.load_state_dict(saved_dict['model'])
+
+        return model, args
 
     def __init__(self, differentiable_model):
         super().__init__()

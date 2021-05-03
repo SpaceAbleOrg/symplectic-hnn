@@ -12,8 +12,8 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from model.loss import OneStepLoss
-from model.hnn import get_hnn
-from utils import setup_args, save_path, to_pickle, from_pickle
+from model.hnn import HNN
+from utils import setup, load_args, save_path, to_pickle, from_pickle
 
 
 def train(model, data, args):
@@ -75,9 +75,12 @@ def train(model, data, args):
     return best_model, stats
 
 
-def main(args):
+def train_main(args):
+    # SETUP ENV AND ARGUMENTS
+    args = setup(args)
+
     # CREATE THE EMPTY MODEL
-    model = get_hnn(args)
+    model = HNN.create(args)
 
     # LOAD DATA SET
     data_path = save_path(args, ext='shnndata', incl_loss=False)
@@ -104,6 +107,5 @@ def main(args):
 
 
 if __name__ == "__main__":
-    # SETUP AND LOAD ARGUMENTS
-    args = setup_args()
-    main(args)
+    for args in load_args():
+        train_main(args)

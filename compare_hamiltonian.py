@@ -8,17 +8,55 @@ from joblib import Parallel, delayed
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import setup_args, save_path
-from model.hnn import load_model
-from train import main
+from utils import setup, load_args, save_path
+from model.loss import choose_scheme
+from model.hnn import HNN, CorrectedHNN
+from train import train_main
 
 
+def hamiltonian_error_grid(model, data_loader):
+    cmin, cmax = data_loader.plot_boundaries()
+    p, q = np.linspace(cmin, cmax), np.linspace(cmin, cmax)
+    P, Q = np.meshgrid(p, q)
+
+    y_flat = np.stack((P, Q), axis=-1).reshape(-1, 2)  # reshape (50, 50, 2) to (2500, 2)
+    H_flat = model.forward(torch.tensor(y_flat, dtype=torch.float32, requires_grad=True)).detach().numpy()
+    H = H_flat.reshape(*P.shape)
+
+    # Calculate the correct Hamiltonian on the grid
+    H_grid = np.array([data_loader.bundled_hamiltonian(y) for y in y_flat]).reshape(*P.shape)
+
+    # Calculate the global constant up to which the model predicts H
+    zero_tensor = torch.tensor(np.zeros(dim), dtype=torch.float32, requires_grad=True).view(1, dim)
+    H0_pred = model.forward(zero_tensor).data.numpy()
+
+    # Return the meshgrid space and the Hamiltonian error
+    return P, Q, H - H0_pred - H_grid
+
+
+def hamiltonian_error_random(model, data_loader, N=2000):
+    # Create an array of 1000 samples in the shape (1000, dim) where dim is the dim of the specific problem, i.e.
+    dim = data_loader.dimension()
+
+    y0_list = [data_loader.random_initial_value() for j in range(N)]
+    y0 = torch.tensor(np.array(y0_list), dtype=torch.float32, requires_grad=True)
+    zero_tensor = torch.tensor(np.zeros(dim), dtype=torch.float32, requires_grad=True).view(1, dim)
+
+    H_pred = model.forward(y0).detach().numpy()
+    H0 = model.forward(zero_tensor).detach().numpy()
+    H_exact = np.array([data_loader.bundled_hamiltonian(y) for y in y0_list])
+
+    return H_pred - H0 - H_exact
+
+
+# THIS FILE CANNOT BE RUN WITH 'prompt' AS ITS NAME.
 if __name__ == "__main__":
     hs = [0.8, 0.4, 0.2, 0.1, 0.05]
-    errors_sampled = np.zeros(len(hs))
-    errors_grid = np.zeros(len(hs))
+    errors_sampled = []
+    # TODO Average the errors on the mesh grid and compare to the random sample
 
-    args = setup_args()
+    # TODO Rewrite using generator power like in load_args... Incorporate the below parallelization code in one logic
+    args = setup(next(load_args()))
 
     # Train the models in parallel (!) if they do not exist
     def f(h):
@@ -29,7 +67,7 @@ if __name__ == "__main__":
         args.h = h
         args.new_data = False
         args.verbose = False
-        main(args)
+        train_main(args)
 
     h_missing = list(filter(f, hs))
     print(h_missing)
@@ -46,44 +84,33 @@ if __name__ == "__main__":
 
         # Loads the model automatically, and rewrites all other args,
         # i.e. all except name, loss_type, h, noise, to match this model
-        model, args = load_model(args)
+        model, args = HNN.load(args)
+        scheme = choose_scheme(args.loss_type)(args)
+        corrected_model = CorrectedHNN.get(model, scheme, args.h)
         data_loader = args.data_class(args.h, args.noise)
+        dim = data_loader.dimension()
+
+        # TO BE CHANGED BY THE USER:
+        use_model = model  #corrected_model
 
         # ----- MAP THE HAMILTONIAN ERROR ON A MESHGRID -----
-        cmin, cmax = data_loader.plot_boundaries()
-        p, q = np.linspace(cmin, cmax), np.linspace(cmin, cmax)
-        P, Q = np.meshgrid(p, q)
-        y_flat = np.stack((P, Q), axis=-1).reshape(-1, 2)  # reshape (50, 50, 2) to (2500, 2)
-        H_flat = model.forward(torch.tensor(y_flat, dtype=torch.float32)).detach().numpy()
-        H = H_flat.reshape(*P.shape)
+        P, Q, H_err = hamiltonian_error_grid(use_model, data_loader)
 
-        # Calculate the correct Hamiltonian on the grid AND the global constant up to which the model predicts H
-        H_grid = np.array([data_loader.bundled_hamiltonian(y) for y in y_flat]).reshape(*P.shape)
-        H0 = model.forward(torch.tensor(np.zeros(data_loader.dimension()), dtype=torch.float32)).data.numpy()
-
-        H_err = H - H0 - H_grid
         CS = ax[i].contour(P, Q, H_err)
         ax[i].set_title(f"Hamiltonian Error for $h={h}$ in phase space")
         ax[i].clabel(CS, inline=True, fontsize=10)
 
         # ----- SAMPLE HAMILTONIAN ERROR FROM RANDOM INITIAL VALUES -----
-        # Create an array of 1000 samples in the shape (1000, dim) where dim is the dim of the specific problem,
-        # accessible e.g. via data_loader.dimension().
-        y0_list = [data_loader.random_initial_value() for j in range(1000)]
-        y0 = np.array(y0_list)
-        H_pred = model.forward(torch.tensor(y0, dtype=torch.float32)).data.numpy()
-        H_exact = np.array([data_loader.bundled_hamiltonian(y) for y in y0_list])
+        H_err = hamiltonian_error_random(use_model, data_loader)
 
-        # TODO What does this next line do; how does the calculation differ ?
-        # errors[hi] = np.mean(np.abs(tabH - np.mean(tabH) - (tabHy0-np.mean(tabHy0))))
-
-        error_list = H_pred - H0 - H_exact
-        errors_sampled[i] = np.mean(np.abs(error_list))
-        print(f"h: {h}, Error on the Hamiltonian: {errors_sampled[i]}")
+        mean, std = np.abs(H_err).mean(), np.abs(H_err).std()
+        errors_sampled.append((mean, std))
+        print(f"h: {h}, Error on the Hamiltonian: {mean:.3f} ± {std:.3f}")
 
     # Error Plot for all h's
-    ax[N-1].loglog(hs, errors_sampled, 'X-')
-    ax[N-1].loglog(hs, hs, 'r-')  # y = x, straight line
+    err = np.array(errors_sampled)
+    ax[N-1].loglog(hs, [h**2 for h in hs], 'r-')  # y = px, straight line with slope of order p
+    ax[N-1].errorbar(hs, err[:, 0], yerr=err[:, 1], fmt='X-')
 
     ax[N-1].set_xlabel("$h$", fontsize=14)
     ax[N-1].set_ylabel(r"$\varepsilon_H$", rotation=0, fontsize=14)

@@ -7,10 +7,10 @@ from scipy.integrate import solve_ivp
 from scipy.optimize import fixed_point
 import matplotlib.pyplot as plt
 
-from utils import setup_args, save_path
+from utils import setup, save_path, load_args
 from model.loss import choose_scheme
 from model.data import get_t_eval
-from model.hnn import load_model, CorrectedHNN
+from model.hnn import HNN, CorrectedHNN
 
 
 def get_predicted_vector_field(model, args, gridsize=20):
@@ -131,6 +131,7 @@ def final_plot(model, args, t_span=(0, 300)):
 
     scheme = choose_scheme(args.loss_type)(args)
     corrected_model = CorrectedHNN.get(model, scheme, args.h)
+    field_corrected = get_predicted_vector_field(corrected_model, args)
     pred_traj_corrected = integrate_model_rk45(corrected_model, t_span, static_y0, **kwargs)
 
     # Calculate the Hamiltonian along the trajectory
@@ -164,7 +165,7 @@ def final_plot(model, args, t_span=(0, 300)):
     phase_space_plot(ax[2], pred_field, pred_traj_custom, title_custom, args)
 
     title_corr = f"Corrected Trajectory"
-    phase_space_plot(ax[3], pred_field, pred_traj_corrected, title_corr, args)
+    phase_space_plot(ax[3], field_corrected, pred_traj_corrected, title_corr, args)
 
     lim = len(t_eval)//3
     title_both = f"$p$ Coordinate vs. Time \n (Note: smaller t-interval for more clarity)"
@@ -194,8 +195,13 @@ def final_plot(model, args, t_span=(0, 300)):
     plt.savefig(save_path(args, ext='pdf'))
 
 
-if __name__ == "__main__":
-    args = setup_args()  # Only requires name, loss-type, h, noise (i.e. the information to locate the .tar file)
-    model, args = load_model(args)  # Loads the model and (re)loads all arguments as initially saved after training
-
+def integrate_main(args):
+    args = setup(args)  # Only requires name, loss-type, h, noise (i.e. the information to locate the .tar file)
+    model, args = HNN.load(args)  # Loads the model and (re)loads all arguments as initially saved after training
     final_plot(model, args)
+
+
+if __name__ == "__main__":
+    # This for loop allows notably for 'prompt' to accept comma-separated lists.
+    for args in load_args():
+        integrate_main(args)

@@ -5,7 +5,7 @@ import time
 import argparse
 
 
-def get_args():
+def get_args(return_dict=False):
     parser = argparse.ArgumentParser(description=None)
 
     # MAIN ARGUMENT (non-optional)
@@ -38,4 +38,5 @@ def get_args():
     parser.add_argument('--verbose', dest='verbose', action='store_true', help='verbose?')
     parser.add_argument('--print_every', default=200, type=int, help='number of gradient steps between prints')
 
-    return parser.parse_args()
+    args = parser.parse_args()  # is a Namespace object
+    return args
