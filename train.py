@@ -85,6 +85,7 @@ if __name__ == "__main__":
         data = data_loader.get_dataset(seed=args.seed, samples=args.data_samples,
                                        test_split=args.test_split, print_args=args)
         print()
+        os.makedirs(args.save_dir) if not os.path.exists(args.save_dir) else None
         to_pickle(data, data_path)
     else:
         print("Loading the existing data set...")
