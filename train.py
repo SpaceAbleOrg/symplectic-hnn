@@ -7,6 +7,7 @@
 
 import os
 import copy
+from joblib import Parallel, delayed
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -92,6 +93,7 @@ def train_main(args):
         data_loader = args.data_class(args.h, args.noise)
         data = data_loader.get_dataset(seed=args.seed, samples=args.data_samples,
                                        test_split=args.test_split, print_args=args)
+        os.makedirs(args.save_dir) if not os.path.exists(args.save_dir) else None
         to_pickle(data, data_path)
     else:
         if args.verbose:
@@ -108,5 +110,4 @@ def train_main(args):
 
 
 if __name__ == "__main__":
-    for args in load_args():
-        train_main(args)
+    _ = Parallel(n_jobs=-1, verbose=True)(delayed(train_main)(args) for args in load_args())

@@ -10,7 +10,7 @@ from matplotlib import cm
 import matplotlib.pyplot as plt
 
 from utils import setup, save_path
-from model.args import load_args
+from model.args import load_args, custom_product
 from model.loss import choose_scheme
 from model.hnn import HNN, CorrectedHNN
 from train import train_main
@@ -61,39 +61,32 @@ def hamiltonian_error_random(model, data_loader, N=2000):
     #return diff - diff.mean()
 
 
+def train_missing_model(args):
+    args = setup(args)
+    this_args = args | {'new_data': False}
+    if not os.path.exists(save_path(this_args)):
+        train_main(this_args)
+
+
 # THIS FILE CANNOT BE RUN WITH 'prompt' AS ITS NAME.
 if __name__ == "__main__":
     hs = [0.8, 0.4, 0.2, 0.1, 0.05]
     errors_sampled = []
     # TODO Average the errors on the mesh grid and compare to the random sample
 
-    # TODO Rewrite using generator power like in load_args... Incorporate the below parallelization code in one logic
-    args = setup(next(load_args()))
-
-    # Train the models in parallel (!) if they do not exist
-    def f(h):
-        args.h = h
-        return not os.path.exists(save_path(args))
-
-    def g(h):
-        args.h = h
-        args.new_data = False
-        args.verbose = False
-        train_main(args)
-
-    h_missing = list(filter(f, hs))
-    print(h_missing)
-    results = Parallel(n_jobs=-1, verbose=True)(delayed(g)(h) for h in h_missing)
+    # TRAIN MISSING MODELS
+    args_list = list(load_args(custom_prod=custom_product(h_list=hs)))
+    _ = Parallel(n_jobs=-1, verbose=True)(delayed(train_missing_model)(args) for args in args_list)
 
     # Set up the subplots
-    N = len(hs)+1
+    N = len(args_list) + 1
     fig = plt.figure(figsize=(6*N, 6), facecolor='white', dpi=300)
     ax = [fig.add_subplot(1, N, i+1, projection='3d') for i in range(N-1)]  # kwarg useful sometimes: aspect='equal'
     axN = fig.add_subplot(1, N, N, frameon=True)
 
     # Calculate the actual Hamiltonian errors
-    for i, h in enumerate(hs):
-        args.h = h
+    for i, args in enumerate(args_list):
+        args = setup(args)
 
         # Loads the model automatically, and rewrites all other args,
         # i.e. all except name, loss_type, h, noise, to match this model
@@ -104,13 +97,13 @@ if __name__ == "__main__":
         dim = data_loader.dimension()
 
         # TO BE CHANGED BY THE USER:
-        use_model = model #corrected_model
+        use_model = model  #corrected_model
 
         # ----- MAP THE HAMILTONIAN ERROR ON A MESHGRID -----
         P, Q, H_err = hamiltonian_error_grid(use_model, data_loader)
 
         CS = ax[i].plot_surface(P, Q, H_err, cmap=cm.coolwarm)
-        ax[i].set_title(f"Hamiltonian Error for $h={h}$ in phase space")
+        ax[i].set_title(f"Hamiltonian Error for $h={args.h}$ in phase space")
         ax[i].set_zlim(-1, 1)
         #ax[i].clabel(CS, inline=True, fontsize=10)
 
@@ -119,7 +112,7 @@ if __name__ == "__main__":
 
         mean, std = np.abs(H_err).mean(), np.abs(H_err).std()
         errors_sampled.append((mean, std))
-        print(f"h: {h}, Error on the Hamiltonian: {mean:.3f} ± {std:.3f}")
+        print(f"h: {args.h}, Error on the Hamiltonian: {mean:.3f} ± {std:.3f}")
 
     # Error Plot for all h's
     err = np.array(errors_sampled)
@@ -134,5 +127,5 @@ if __name__ == "__main__":
     axN.legend()
 
     fig.tight_layout()
-    plt.savefig(save_path(args, pltname='herr', ext='pdf', incl_h=False))
+    plt.savefig(save_path(args_list[0], pltname='herr', ext='pdf', incl_h=False))
     plt.show()
