@@ -47,11 +47,11 @@ class HamiltonianDataSet(ABC):
         pass
 
     def bundled_hamiltonian(self, coords, t=None):
-        return self.hamiltonian(*np.split(coords, 2), t=t)
+        return self.hamiltonian(*np.split(coords, 2), t=t).squeeze()
 
     def dynamics_fn(self, t, coords):
         gradH = autograd.grad(self.bundled_hamiltonian)(coords, t=t)
-        J = symplectic_form(gradH.shape[0])
+        J = symplectic_form(self.dimension())  # gradH.shape[0] should be just self.dimension()
         return J.T @ gradH
 
     @staticmethod
@@ -100,6 +100,9 @@ class HamiltonianDataSet(ABC):
             y, t = self.get_trajectory(t_span=(0, self.h), **kwargs)
             ys.append(y)
             ts.append(t)
+
+        if print_args.verbose:
+            print()  # to not overwrite the previous lines because they ended in \r
 
         coords = np.array(ys).squeeze()
         # Also add t to the data (although all rows will usually be the same)
@@ -171,14 +174,14 @@ class NonlinearPendulum(HamiltonianDataSet):
 
     @staticmethod
     def random_initial_value():
-        """ Start at a random initial point between (-π, +π) rad, with initial momentum in [-1, +1]. """
-        theta = 2 * np.pi * (np.random.rand() - 1/2)
-        p = 2 * np.random.rand() - 1
+        """ Start at a random initial point and initial momentum, respectively between (-π, +π) rad. """
+        theta = 4 * np.pi * (np.random.rand() - 1/2)
+        p = 2 * np.pi * (np.random.rand() - 1/2)
         return np.array([p, theta])
 
     @staticmethod
     def static_initial_value():
-        return np.array([0., 3])
+        return np.array([0.2, 2.5])
 
     @staticmethod
     def plot_boundaries():

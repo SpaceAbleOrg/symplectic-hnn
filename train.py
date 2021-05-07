@@ -7,18 +7,23 @@
 
 import os
 import copy
+from joblib import Parallel, delayed
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from model.loss import OneStepLoss
-from model.hnn import get_hnn
-from utils import setup_args, save_path, to_pickle, from_pickle
+from model.hnn import HNN
+from model.args import load_args
+from utils import setup, save_path, to_pickle, from_pickle
 
 
 def train(model, data, args):
     # Create a standard optimizer
-    optim = torch.optim.Adam(model.parameters(), args.learn_rate, weight_decay=1e-4)
+    # optim = torch.optim.Adam(model.parameters(), args.learn_rate, weight_decay=1e-4)
+    optim = torch.optim.AdamW(model.parameters(), args.learn_rate, betas=(0.9, 0.999), eps=1e-08,
+                              weight_decay=0.01, amsgrad=True)
+
     # Load the symplectic (or not) loss function
     loss_fct = OneStepLoss(args)  # Choosing the actual loss_type is hidden in this constructor
 
@@ -51,7 +56,7 @@ def train(model, data, args):
         train_loss_val = loss_fct(model, x, t)
         test_loss_val = loss_fct(model, test_x, test_t)
 
-        if test_loss_val < best_test_loss:
+        if step > args.epochs/2 and test_loss_val < best_test_loss:
             best_model = copy.deepcopy(model)
             best_test_loss = test_loss_val
 
@@ -72,23 +77,27 @@ def train(model, data, args):
     return best_model, stats
 
 
-if __name__ == "__main__":
-    # SETUP AND LOAD ARGUMENTS, CREATE EMPTY MODEL
-    args = setup_args()
-    model = get_hnn(args)
+def train_main(args):
+    # SETUP ENV AND ARGUMENTS
+    args = setup(args)
+
+    # CREATE THE EMPTY MODEL
+    model = HNN.create(args)
 
     # LOAD DATA SET
     data_path = save_path(args, ext='shnndata', incl_loss=False)
     if args.new_data or not os.path.exists(data_path):
-        print("Generating a new data set...")
+        if args.verbose:
+            print("Generating a new data set...")
+
         data_loader = args.data_class(args.h, args.noise)
         data = data_loader.get_dataset(seed=args.seed, samples=args.data_samples,
                                        test_split=args.test_split, print_args=args)
-        print()
         os.makedirs(args.save_dir) if not os.path.exists(args.save_dir) else None
         to_pickle(data, data_path)
     else:
-        print("Loading the existing data set...")
+        if args.verbose:
+            print("Loading the existing data set...")
         data = from_pickle(data_path)
 
     # RUN THE MAIN FUNCTION TO TRAIN THE MODEL
@@ -98,3 +107,7 @@ if __name__ == "__main__":
         # SAVE
         os.makedirs(args.save_dir) if not os.path.exists(args.save_dir) else None
         torch.save({'args': args, 'model': model.state_dict()}, save_path(args))
+
+
+if __name__ == "__main__":
+    _ = Parallel(n_jobs=-1, verbose=True)(delayed(train_main)(args) for args in load_args())

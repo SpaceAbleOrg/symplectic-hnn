@@ -1,6 +1,8 @@
 # Symplectic Hamiltonian Neural Networks | 2021
 # Marco David
 
+import warnings
+
 import torch
 import numpy as np
 from abc import ABC, abstractmethod
@@ -26,17 +28,61 @@ class ForwardEuler(OneStepScheme):
         return yn
 
 
-class SymplecticEuler(OneStepScheme):
+class SymplecticOneStepScheme(OneStepScheme, ABC):
+    @abstractmethod
+    def corrected(self, hamiltonian, x, h, order):
+        pass
+
+
+class SymplecticEuler(SymplecticOneStepScheme):
     def argument(self, yn, ynplusone):
         pn, qn = torch.split(yn, self.args.dim // 2, dim=-1)
         pnplusone, qnplusone = torch.split(ynplusone, self.args.dim // 2, dim=-1)
 
         return torch.cat((pnplusone, qn), dim=-1)
 
+    def corrected(self, hamiltonian, x, h, order=1):
+        MAX = 2
+        if order > MAX:
+            raise NotImplementedError(f"Higher order corrections (> {MAX}) are not (yet) implemented.")
 
-class ImplicitMidpoint(OneStepScheme):
+        # The Hamiltonian is a scalar, so it has shape [batch_size, 1] – the next line removes the superfluous dimension
+        hamiltonian = hamiltonian.squeeze(-1)
+
+        # The sum is over the remaining 'batch' dimension which allows vectorization of the network
+        dH = torch.autograd.grad(hamiltonian.sum(), x, create_graph=True)[0]
+        dH_p, dH_q = torch.split(dH, self.args.dim // 2, dim=-1)
+
+        # Calculate the first-order correction to the Hamiltonian for the SympEuler scheme
+        # The einsum realizes a batch dot product between dH_p and dH_q
+        correction = hamiltonian - h/2 * torch.einsum('ai,ai->a', dH_p, dH_q)
+
+        # if order > 1:
+        #    print(dH.shape, dH)
+        #    print(x.shape, x)
+        #    ddH = torch.autograd.grad(dH, x, create_graph=True, grad_outputs=torch.ones_like(dH))[0]
+        #    print(ddH.shape)
+        #    print(ddH[0, 0])
+        #    raise RuntimeError("STOP. Not yet implemented.")
+
+        #    t1 = t2 = t3 = 0
+        #    correction = correction - h**2 / 6 * (t1 + t2 + t3)
+
+        return correction
+
+
+class ImplicitMidpoint(SymplecticOneStepScheme):
     def argument(self, yn, ynplusone):
         return (yn + ynplusone) / 2
+
+    def corrected(self, hamiltonian, x, h, order=1):
+        MAX = 1
+        if order > MAX:
+            raise NotImplementedError(f"Higher order corrections (> {MAX}) are not (yet) implemented.")
+
+        warnings.warn("The midpoint rule has no first order correction. Calling its `corrected` method is not yet"
+                      "supported and simply is the identity function for now.", RuntimeWarning)
+        return hamiltonian
 
 
 def choose_scheme(name):

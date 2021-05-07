@@ -10,35 +10,20 @@
 import os
 import sys
 import pickle
+import numpy as np
+import torch
 from torch.nn import functional
 # import zipfile
 # import imageio
 # import shutil
 # from PIL import Image
 
-from model.args import get_args
-from model.data import *
+from model.data import HarmonicOscillator, NonlinearPendulum, FermiPastaUlam
 
 
 # This function is generic, but needs to run in a top-level file to setup the path variables
 # and define the save_directory properly.
-def setup_args():
-    # Load arguments
-    args = get_args()
-
-    # Allow for prompt
-    if args.name == "prompt":
-        args.name = input("Which model (data set name) do you want to use ?")
-        loss_type = input("Which numerical method for training (default midpoint) ?")
-        if loss_type:
-            args.loss_type = loss_type
-        h = input("Which step size h (default 0.1) ?")
-        if h:
-            args.h = float(h)
-        noise = input("Which level of noise (default none) ?")
-        if noise:
-            args.noise = float(noise)
-
+def setup(args):
     # Setup directory of this file as working (save) directory
     this_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(this_dir)
@@ -105,7 +90,7 @@ def choose_helper(dict, name, choose_what="Input"):
     if name in dict.keys():
         return dict[name]
     else:
-        raise ValueError(f"{choose_what} not recognized. Possibilities are: " + ", ".join(dict.keys()))
+        raise ValueError(f"{choose_what} not recognized: {name}. Possibilities are: " + ", ".join(dict.keys()))
 
 
 def choose_nonlinearity(name):
@@ -121,6 +106,7 @@ def choose_nonlinearity(name):
     return choose_helper(nonlinearities, name, choose_what="Nonlinearity")
 
 
+# This function cannot be moved inside data.py because that would cause a circular import!
 def choose_data(name):
     datasets = {'spring': HarmonicOscillator,
                 'pendulum': NonlinearPendulum,
@@ -130,8 +116,10 @@ def choose_data(name):
     return choose_helper(datasets, name, choose_what="Data set name")
 
 
-def save_path(args, pltname='', ext='tar', incl_loss=True):
-    label = args.name + '-h' + str(args.h)
+def save_path(args, pltname='', ext='tar', incl_h=True, incl_loss=True):
+    label = args.name
+    if incl_h:
+        label += '-h' + str(args.h)
     if incl_loss:
         label += '-' + args.loss_type
     if pltname:

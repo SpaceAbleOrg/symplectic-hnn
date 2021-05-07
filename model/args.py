@@ -2,11 +2,27 @@
 # Marco David
 
 import time
-import argparse
+import itertools
+
+from argparse import ArgumentParser, Namespace
+
+
+class UpdatableNamespace(Namespace):
+    @staticmethod
+    def get(namespace):
+        return UpdatableNamespace(**namespace.__dict__)
+
+    def __or__(self, other):
+        if isinstance(other, Namespace):
+            return UpdatableNamespace(**(self.__dict__ | other.__dict__))
+        elif isinstance(other, dict):
+            return UpdatableNamespace(**(self.__dict__ | other))
+        else:
+            raise TypeError(f"unsupported operand type(s) for |: '{type(self)}' and '{type(other)}'")
 
 
 def get_args():
-    parser = argparse.ArgumentParser(description=None)
+    parser = ArgumentParser(description=None)
 
     # MAIN ARGUMENT (non-optional)
     parser.add_argument('name', type=str, help='choose the system and data set')
@@ -38,4 +54,51 @@ def get_args():
     parser.add_argument('--verbose', dest='verbose', action='store_true', help='verbose?')
     parser.add_argument('--print_every', default=200, type=int, help='number of gradient steps between prints')
 
-    return parser.parse_args()
+    args = parser.parse_args()  # is a Namespace object
+    return UpdatableNamespace.get(args)
+
+
+def process_list(input_string):
+    return map(str.strip, input_string.split(','))
+
+
+def custom_product(name_list=(None,), loss_type_list=(None,), h_list=(None,), noise_list=(None,)):
+    for name, loss_type, h, noise in itertools.product(name_list, loss_type_list, h_list, noise_list):
+        args = {}
+        if name:
+            args['name'] = name
+        if loss_type:
+            args['loss_type'] = loss_type
+        if h:
+            args['h'] = float(h)
+        if noise:
+            args['noise'] = float(noise)
+        yield args
+
+
+def prompt():
+    name = input("Which model (data set name) do you want to use ?")
+
+    loss_type_list = process_list(input("Which numerical method for training (default midpoint) ?"))
+    h_list = process_list(input("Which step size h (default 0.1) ?"))
+    # noise = process_list(input("Which level of noise (default none) ?"))
+
+    yield from custom_product(name_list=(name,), loss_type_list=loss_type_list, h_list=h_list)
+
+
+def load_args(custom_prod=None):
+    """ Loads all possible combinations of arguments provided by the user. Returns a generator object. """
+    # Load arguments
+    args = get_args()
+
+    # Allow for prompt
+    if args.name == "prompt":
+        for prompt_res in prompt():
+            yield args | prompt_res
+            # read the dict union as: args, updated and overwritten with the keys/values from prompt_res
+    elif custom_prod is not None:
+        for custom_args in custom_prod:
+            yield args | custom_args
+            # read the dict union as: args, updated and overwritten with the keys/values from custom_args
+    else:
+        yield args

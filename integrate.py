@@ -7,10 +7,11 @@ from scipy.integrate import solve_ivp
 from scipy.optimize import fixed_point
 import matplotlib.pyplot as plt
 
-from utils import setup_args, save_path
+from utils import setup, save_path
+from model.args import load_args
 from model.loss import choose_scheme
 from model.data import get_t_eval
-from model.hnn import load_model
+from model.hnn import HNN, CorrectedHNN
 
 
 def get_predicted_vector_field(model, args, gridsize=20):
@@ -43,7 +44,7 @@ def integrate_model_rk45(model, t_span, y0, fun=None, **kwargs):
 
 
 def integrate_model_custom(model, t_span, y0, args):
-    dim = args.dim  # assert == np.size(y0)
+    dim = args.dim  # assert dim == np.size(y0)
     scheme = choose_scheme(args.loss_type)(args)
 
     def iter_fn(y_var, yn, h):
@@ -60,13 +61,15 @@ def integrate_model_custom(model, t_span, y0, args):
     ts = [t]
 
     while t <= t_span[1]:
-        # Alternative to scipy's fixed_point: Iterate the function myself, say 10 times for an error h^10.
-        # yn = y
-        # for i in range(10):
-        #    y = iter_fn(y, yn, args.h, dim, model, scheme)
+        # Alternative to scipy's fixed_point: Iterate the function by hand, say 10 times for an error h^10.
+        #yn = y
+        #for i in range(10):
+        #    y = iter_fn(y, yn, args.h)
 
-        y = fixed_point(iter_fn, y, args=(y, args.h), xtol=1e-4)  # method='iteration' possible, too, without accelerated convergence
-        # xtol=1e-8 not attainable with <500 iterations
+        # Kwarg method='iteration' possible, too, without accelerated convergence
+        # Kwarg xtol=1e-8 normally not attainable with <500 iterations
+        y = fixed_point(iter_fn, y, args=(y, args.h), xtol=1e-4)
+
         ys.append(y)
         t += args.h
         ts.append(t)
@@ -75,12 +78,14 @@ def integrate_model_custom(model, t_span, y0, args):
     # return np.array(ys)
 
 
-def phase_space_helper(axes, boundary, title):
+def phase_space_helper(axes, boundary, title, aspect_equal=False):
     """ Sets up a phase space plot with the correct axis labels, boundaries and title. """
     axes.set_xlabel("$p$", fontsize=14)
     axes.set_ylabel("$q$", rotation=0, fontsize=14)
     axes.set_title(title, pad=10)
-    axes.set_aspect('equal')
+
+    if aspect_equal:
+        axes.set_aspect('equal')
 
     if boundary:
         axes.set_xlim(boundary)
@@ -117,12 +122,18 @@ def plot_helper(axes, x, y, title=None):
 
 def final_plot(model, args, t_span=(0, 300)):
     t_eval = get_t_eval(t_span, args.h)
+    kwargs = {'t_eval': t_eval, 'rtol': 1e-6, 'method': 'RK45'}
 
     # INTEGRATE MODEL
     static_y0 = args.data_class.static_initial_value()
     pred_field = get_predicted_vector_field(model, args)
-    pred_traj_rk45 = integrate_model_rk45(model, t_span, static_y0, t_eval=t_eval, rtol=1e-6, method='RK45')
+    pred_traj_rk45 = integrate_model_rk45(model, t_span, static_y0, **kwargs)
     pred_traj_custom, t_custom = integrate_model_custom(model, t_span, static_y0, args)
+
+    scheme = choose_scheme(args.loss_type)(args)
+    corrected_model = CorrectedHNN.get(model, scheme, args.h)
+    field_corrected = get_predicted_vector_field(corrected_model, args)
+    pred_traj_corrected = integrate_model_rk45(corrected_model, t_span, static_y0, **kwargs)
 
     # Calculate the Hamiltonian along the trajectory
     #H = model.forward(torch.tensor(pred_traj_rk45, dtype=torch.float32)).data.numpy()
@@ -142,8 +153,8 @@ def final_plot(model, args, t_span=(0, 300)):
     #H_error = np.abs(H - Hy0)
 
     # === BEGIN PLOTTING ===
-    fig = plt.figure(figsize=(25, 6), facecolor='white', dpi=300)
-    ax = [fig.add_subplot(1, 4, i + 1, frameon=True) for i in range(4)]  # kwarg useful sometimes: aspect='equal'
+    fig = plt.figure(figsize=(28, 6), facecolor='white', dpi=300)
+    ax = [fig.add_subplot(1, 5, i + 1, frameon=True) for i in range(5)]  # kwarg useful sometimes: aspect='equal'
 
     title_true = f"True Trajectory\n (Integrated with RK45)"
     phase_space_plot(ax[0], exact_field, exact_traj, title_true, args)
@@ -154,12 +165,16 @@ def final_plot(model, args, t_span=(0, 300)):
     title_custom = f"Symplectic HNN: $h = {args.h}, t_f = {t_span[1]}$\n Trained with {args.loss_type}, Integrated with {args.loss_type}"
     phase_space_plot(ax[2], pred_field, pred_traj_custom, title_custom, args)
 
+    title_corr = f"Corrected Trajectory"
+    phase_space_plot(ax[3], field_corrected, pred_traj_corrected, title_corr, args)
+
     lim = len(t_eval)//3
     title_both = f"$p$ Coordinate vs. Time \n (Note: smaller t-interval for more clarity)"
-    axes = ax[3]
+    axes = ax[4]
     axes.plot(t_eval[:lim], exact_traj[:lim, 0], label='Exact')
     axes.plot(t_eval[:lim], pred_traj_rk45[:lim, 0], label='Pred RK45')
     axes.plot(t_custom[:lim], pred_traj_custom[:lim, 0], label=f'Pred {args.loss_type}')
+    axes.plot(t_eval[:lim], pred_traj_corrected[:lim, 0], label='Pred Corrected')
     axes.set_xlabel("$t$", fontsize=14)
     axes.set_ylabel("$p$", rotation=0, fontsize=14)
     axes.legend()
@@ -181,8 +196,13 @@ def final_plot(model, args, t_span=(0, 300)):
     plt.savefig(save_path(args, ext='pdf'))
 
 
-if __name__ == "__main__":
-    args = setup_args()  # Only requires name, loss-type, h, noise (i.e. the information to locate the .tar file)
-    model, args = load_model(args)  # Loads the model and (re)loads all arguments as initially saved after training
-
+def integrate_main(args):
+    args = setup(args)  # Only requires name, loss-type, h, noise (i.e. the information to locate the .tar file)
+    model, args = HNN.load(args)  # Loads the model and (re)loads all arguments as initially saved after training
     final_plot(model, args)
+
+
+if __name__ == "__main__":
+    # This for loop allows notably for 'prompt' to accept comma-separated lists.
+    for args in load_args():
+        integrate_main(args)
