@@ -17,13 +17,16 @@ class HNN(torch.nn.Module):
 
     @staticmethod
     def create(args):
+        if torch.cuda.is_available():
+            torch.set_default_tensor_type('torch.cuda.FloatTensor')
+
         # Create the standard MLP with args.dim inputs and one single scalar output, the Hamiltonian
         nn_model = MLP(hidden_layers=args.hidden_layers, input_dim=args.dim, hidden_dim=args.hidden_dim, output_dim=1,
                        nonlinearity=args.nonlinearity)
         # Use this model to create a Hamiltonian Neural Network, which knows how to differentiate the Hamiltonian
         model = HNN(nn_model)
 
-        return model
+        return model.to('cuda') if torch.cuda.is_available() else model
 
     @staticmethod
     def load(args):

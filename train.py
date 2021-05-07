@@ -43,13 +43,18 @@ def train(model, data, args):
     for step in range(args.epochs + 1):
 
         # Use stochastic gradient descent (SGD) with args.batch_size
-        for ixs in torch.split(torch.arange(x.shape[0]), args.batch_size):
-            # train step, find loss and optimize
-            model.train()
-            loss = loss_fct(model, x[ixs], t[ixs])
-            loss.backward()
-            optim.step()
-            optim.zero_grad()
+        # – – TODO indexing into tensors is slow and not supported (?) on GPU
+        # for ixs in torch.split(torch.arange(x.shape[0]), args.batch_size):
+        #     ...
+        #     loss = loss_fct(model, x[ixs], t[ixs])
+        #     ...
+
+        # train step, find loss and optimize
+        model.train()
+        loss = loss_fct(model, x, t)
+        loss.backward()
+        optim.step()
+        optim.zero_grad()
 
         # run test data
         model.eval()
