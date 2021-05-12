@@ -46,9 +46,6 @@ class SymplecticEuler(SymplecticOneStepScheme):
         if order > MAX:
             raise NotImplementedError(f"Higher order corrections (> {MAX}) are not (yet) implemented.")
 
-        # The Hamiltonian is a scalar, so it has shape [batch_size, 1] – the next line removes the superfluous dimension
-        hamiltonian = hamiltonian.squeeze(-1)
-
         # The sum is over the remaining 'batch' dimension which allows vectorization of the network
         dH = torch.autograd.grad(hamiltonian.sum(), x, create_graph=True)[0]
         dH_p, dH_q = torch.split(dH, self.args.dim // 2, dim=-1)

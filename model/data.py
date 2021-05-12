@@ -23,6 +23,7 @@ def symplectic_form(n, canonical_coords=True):
         for i in range(n):  # make asymmetric
             for j in range(i + 1, n):
                 J[i, j] *= -1
+
     return torch.tensor(J, dtype=torch.float32)
 
 
@@ -51,8 +52,8 @@ class HamiltonianDataSet(ABC):
 
     def dynamics_fn(self, t, coords):
         gradH = autograd.grad(self.bundled_hamiltonian)(coords, t=t)
-        J = symplectic_form(self.dimension())  # gradH.shape[0] should be just self.dimension()
-        return J.T @ gradH
+        J = symplectic_form(self.dimension()).cpu().numpy()
+        return J.T @ gradH  # does NOT return a torch.Tensor but a numpy.ndarray
 
     @staticmethod
     @abstractmethod
@@ -80,7 +81,8 @@ class HamiltonianDataSet(ABC):
 
         if y0 is None:
             y0 = self.random_initial_value()
-        ivp_solution = solve_ivp(fun=self.dynamics_fn, t_span=t_span, y0=y0, t_eval=t_eval, rtol=rtol, method='RK45', **kwargs)
+        ivp_solution = solve_ivp(fun=self.dynamics_fn,
+                                 t_span=t_span, y0=y0, t_eval=t_eval, rtol=rtol, method='RK45', **kwargs)
 
         y = ivp_solution.y.T
         if self.noise > 0:

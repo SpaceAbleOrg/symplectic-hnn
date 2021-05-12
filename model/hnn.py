@@ -47,7 +47,8 @@ class HNN(torch.nn.Module):
         self.J = symplectic_form(differentiable_model.input_dim)
 
     def forward(self, x):
-        return self.differentiable_model(x)
+        # squeeze the last dimension in [batch_size, 1] since H is a scalar
+        return self.differentiable_model(x).squeeze(-1)
 
     def time_derivative(self, x):
         """ Calculates the Hamiltonian vector field from the predicted Hamiltonian (self.forward) """
