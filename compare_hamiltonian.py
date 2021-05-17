@@ -71,11 +71,12 @@ def train_missing_model(args):
 # THIS FILE CANNOT BE RUN WITH 'prompt' AS ITS NAME.
 if __name__ == "__main__":
     hs = [0.8, 0.4, 0.2, 0.1, 0.05, 0.025]
+    methods = ['euler-forw', 'euler-symp', 'midpoint']
     errors_sampled, errors_corrected = [], []
     # TODO Average the errors on the mesh grid and compare to the random sample
 
     # TRAIN MISSING MODELS
-    args_list = list(load_args(custom_prod=custom_product(h_list=hs)))
+    args_list = list(load_args(custom_prod=custom_product(h_list=hs, loss_type_list=methods)))
     _ = Parallel(n_jobs=-1, verbose=True)(delayed(train_missing_model)(args) for args in args_list)
 
     # Set up the subplots

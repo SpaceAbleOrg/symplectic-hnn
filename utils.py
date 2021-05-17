@@ -18,7 +18,7 @@ from torch.nn import functional
 # import shutil
 # from PIL import Image
 
-from model.data import HarmonicOscillator, NonlinearPendulum, FermiPastaUlam
+from model.data import HarmonicOscillator, NonlinearPendulum, FermiPastaUlamTsingou, TwoBody
 
 
 # This function is generic, but needs to run in a top-level file to setup the path variables
@@ -110,7 +110,8 @@ def choose_nonlinearity(name):
 def choose_data(name):
     datasets = {'spring': HarmonicOscillator,
                 'pendulum': NonlinearPendulum,
-                'fpu': FermiPastaUlam  # FPU = Fermi-Pasta-Ulam (see GNI book)
+                'fput': FermiPastaUlamTsingou,  # FPUT = Fermi-Pasta-Ulam-Tsingou (see GNI book)
+                'twobody': TwoBody
                 }
 
     return choose_helper(datasets, name, choose_what="Data set name")

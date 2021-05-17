@@ -190,12 +190,39 @@ class NonlinearPendulum(HamiltonianDataSet):
         return -3.3, +3.3
 
 
-class FermiPastaUlam(HamiltonianDataSet):
-    """ Implements the Hamiltonian of the Fermi-Pasta-Ulam problem for m=3 (see GNI Section I.5.1). """
+class TwoBody(HamiltonianDataSet):
+    """ Implements the Hamiltonian of the two-body problem in 2 spatial dimensions. """
 
     @staticmethod
     def dimension():
-        """ Returns 2 for the full system's dimensionality: one q position coordinate, one p momentum coordinate. """
+        """ Returns 8 for the full system's dimensionality: two q position coordinates, two p momentum coordinates. """
+        return 8
+
+    def hamiltonian(self, p, q, t=None):
+        H = 1/2 * autograd.numpy.sum(p ** 2) + 1 / autograd.numpy.sum((q[0:2] - q[2:4]) ** 2)
+        return H
+
+    @staticmethod
+    def random_initial_value():
+        """ Start at a random initial point and initial momentum, in [-2, 2]^8. """
+        return 4 * (np.random.rand(TwoBody.dimension()) - 1 / 2)
+
+    @staticmethod
+    def static_initial_value():
+        p1, p2 = np.array([0.8, 0]), np.array([-1.2, 0])
+        q1, q2 = np.array([0, 1]), np.array([0, -1])
+        return np.concatenate((p1, p2, q1, q2))
+
+    @staticmethod
+    def plot_boundaries():
+        pass  # TODO
+
+
+class FermiPastaUlamTsingou(HamiltonianDataSet):
+    """ Implements the Hamiltonian of the Fermi-Pasta-Ulam-Tsingou problem for m=3 (see GNI Section I.5.1). """
+
+    @staticmethod
+    def dimension():
         return 12
 
     def hamiltonian(self, p, q, t=None, omega=1):
@@ -206,9 +233,9 @@ class FermiPastaUlam(HamiltonianDataSet):
 
     @staticmethod
     def random_initial_value():
-        """ Generates a completely random initial state vector in [-2, +2]^DIM where the true solution lives. """
+        """ Generates a random initial state vector in [-2, +2]^DIM where the true solution lives. """
         L = 2.1  # The "true" RK45 solution has p and q oscillating between -2 and +2, as well as x, y in [-1.5, +1.5]
-        return L * (2 * np.random.rand(FermiPastaUlam.dimension()) - 1)
+        return L * (2 * np.random.rand(FermiPastaUlamTsingou.dimension()) - 1)
 
     @staticmethod
     def static_initial_value(**kwargs):
