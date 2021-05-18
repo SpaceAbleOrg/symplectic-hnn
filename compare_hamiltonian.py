@@ -9,11 +9,12 @@ import numpy as np
 from matplotlib import cm
 import matplotlib.pyplot as plt
 
-from utils import setup, save_path
+from utils import save_path
 from model.args import load_args, custom_product
 from model.loss import choose_scheme
 from model.hnn import HNN, CorrectedHNN
-from train import train_main
+
+from train import setup, train_if_missing
 
 
 def hamiltonian_error_grid(model, data_loader):
@@ -61,13 +62,6 @@ def hamiltonian_error_random(model, data_loader, N=2000):
     #return diff - diff.mean()
 
 
-def train_missing_model(args):
-    args = setup(args)
-    this_args = args | {'new_data': False}
-    if not os.path.exists(save_path(this_args)):
-        train_main(this_args)
-
-
 # THIS FILE CANNOT BE RUN WITH 'prompt' AS ITS NAME.
 if __name__ == "__main__":
     hs = [0.8, 0.4, 0.2, 0.1, 0.05, 0.025]
@@ -77,7 +71,7 @@ if __name__ == "__main__":
 
     # TRAIN MISSING MODELS
     args_list = list(load_args(custom_prod=custom_product(h_list=hs, loss_type_list=methods)))
-    _ = Parallel(n_jobs=-1, verbose=True)(delayed(train_missing_model)(args) for args in args_list)
+    _ = Parallel(n_jobs=-1, verbose=True)(delayed(train_if_missing)(args) for args in args_list)
 
     # Set up the subplots
     N = len(args_list) + 1

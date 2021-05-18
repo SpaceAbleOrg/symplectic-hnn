@@ -5,43 +5,15 @@
 # Hamiltonian Neural Networks | 2019
 # Sam Greydanus, Misko Dzamba, Jason Yosinski
 
-# NOTE: This file needs to remain in the top-level project directory!
 
-import os
-import sys
 import pickle
-import numpy as np
 import torch
 from torch.nn import functional
+
 # import zipfile
 # import imageio
 # import shutil
 # from PIL import Image
-
-from model.data import HarmonicOscillator, NonlinearPendulum, FermiPastaUlamTsingou, TwoBody
-
-
-# This function is generic, but needs to run in a top-level file to setup the path variables
-# and define the save_directory properly.
-def setup(args):
-    # Setup directory of this file as working (save) directory
-    this_dir = os.path.dirname(os.path.abspath(__file__))
-    parent_dir = os.path.dirname(this_dir)
-    sys.path.append(parent_dir)
-
-    # Set the save directory if nothing is given
-    if not args.save_dir:
-        args.save_dir = this_dir + '/experiment-' + args.name
-
-    # Store data_class directly in args for future access, and dimension for future convenience (eg of loss functions)
-    args.data_class = choose_data(args.name)
-    args.dim = args.data_class.dimension()
-
-    # Set random seed
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
-
-    return args
 
 
 # def rk4(fun, y0, t, dt, *args, **kwargs):
@@ -86,6 +58,10 @@ def from_pickle(path):  # load something
     return thing
 
 
+def process_list(input_string):
+    return map(str.strip, input_string.split(','))
+
+
 def choose_helper(dict, name, choose_what="Input"):
     if name in dict.keys():
         return dict[name]
@@ -104,17 +80,6 @@ def choose_nonlinearity(name):
                       }
 
     return choose_helper(nonlinearities, name, choose_what="Nonlinearity")
-
-
-# This function cannot be moved inside data.py because that would cause a circular import!
-def choose_data(name):
-    datasets = {'spring': HarmonicOscillator,
-                'pendulum': NonlinearPendulum,
-                'fput': FermiPastaUlamTsingou,  # FPUT = Fermi-Pasta-Ulam-Tsingou (see GNI book)
-                'twobody': TwoBody
-                }
-
-    return choose_helper(datasets, name, choose_what="Data set name")
 
 
 def save_path(args, pltname='', ext='tar', incl_h=True, incl_loss=True):

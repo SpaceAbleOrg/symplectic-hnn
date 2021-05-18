@@ -9,6 +9,8 @@ from abc import ABC, abstractmethod
 from scipy.integrate import solve_ivp
 from sklearn.model_selection import train_test_split
 
+from utils import choose_helper
+
 
 def symplectic_form(n, canonical_coords=True):
     if canonical_coords:
@@ -29,6 +31,16 @@ def symplectic_form(n, canonical_coords=True):
 
 def get_t_eval(t_span, h):
     return np.linspace(t_span[0], t_span[1], int((t_span[1] - t_span[0]) / h) + 1)
+
+
+def choose_data(name):
+    datasets = {'spring': HarmonicOscillator,
+                'pendulum': NonlinearPendulum,
+                'fput': FermiPastaUlamTsingou,  # FPUT = Fermi-Pasta-Ulam-Tsingou (see GNI book)
+                'twobody': TwoBody
+                }
+
+    return choose_helper(datasets, name, choose_what="Data set name")
 
 
 class HamiltonianDataSet(ABC):

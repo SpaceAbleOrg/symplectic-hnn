@@ -58,10 +58,6 @@ def get_args():
     return UpdatableNamespace.get(args)
 
 
-def process_list(input_string):
-    return map(str.strip, input_string.split(','))
-
-
 def custom_product(name_list=(None,), loss_type_list=(None,), h_list=(None,), noise_list=(None,)):
     for name, loss_type, h, noise in itertools.product(name_list, loss_type_list, h_list, noise_list):
         args = {}
@@ -73,32 +69,4 @@ def custom_product(name_list=(None,), loss_type_list=(None,), h_list=(None,), no
             args['h'] = float(h)
         if noise:
             args['noise'] = float(noise)
-        yield args
-
-
-def prompt():
-    name = input("Which model (data set name) do you want to use ?")
-
-    loss_type_list = process_list(input("Which numerical method for training (default midpoint) ?"))
-    h_list = process_list(input("Which step size h (default 0.1) ?"))
-    # noise = process_list(input("Which level of noise (default none) ?"))
-
-    yield from custom_product(name_list=(name,), loss_type_list=loss_type_list, h_list=h_list)
-
-
-def load_args(custom_prod=None):
-    """ Loads all possible combinations of arguments provided by the user. Returns a generator object. """
-    # Load arguments
-    args = get_args()
-
-    # Allow for prompt
-    if args.name == "prompt":
-        for prompt_res in prompt():
-            yield args | prompt_res
-            # read the dict union as: args, updated and overwritten with the keys/values from prompt_res
-    elif custom_prod is not None:
-        for custom_args in custom_prod:
-            yield args | custom_args
-            # read the dict union as: args, updated and overwritten with the keys/values from custom_args
-    else:
         yield args
