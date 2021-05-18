@@ -10,7 +10,7 @@ from matplotlib import cm
 import matplotlib.pyplot as plt
 
 from utils import save_path
-from model.args import load_args, custom_product
+from model.args import custom_product
 from model.loss import choose_scheme
 from model.hnn import HNN, CorrectedHNN
 
@@ -18,6 +18,8 @@ from train import setup, train_if_missing
 
 
 def hamiltonian_error_grid(model, data_loader):
+    dim = data_loader.dimension()
+
     cmin, cmax = data_loader.plot_boundaries()
     p, q = np.linspace(cmin, cmax), np.linspace(cmin, cmax)
     P, Q = np.meshgrid(p, q)

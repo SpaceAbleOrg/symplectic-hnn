@@ -5,13 +5,8 @@ import torch
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.optimize import fixed_point
-import matplotlib.pyplot as plt
 
-from utils import setup, save_path
-from model.args import load_args
 from model.loss import choose_scheme
-from model.data import get_t_eval
-from model.hnn import HNN, CorrectedHNN
 
 
 def get_predicted_vector_field(model, args, gridsize=20):
@@ -118,91 +113,3 @@ def plot_helper(axes, x, y, title=None):
 
     if title:
         axes.set_title(title)
-
-
-def final_plot(model, args, t_span=(0, 300)):
-    t_eval = get_t_eval(t_span, args.h)
-    kwargs = {'t_eval': t_eval, 'rtol': 1e-6, 'method': 'RK45'}
-
-    # INTEGRATE MODEL
-    static_y0 = args.data_class.static_initial_value()
-    pred_field = get_predicted_vector_field(model, args)
-    pred_traj_rk45 = integrate_model_rk45(model, t_span, static_y0, **kwargs)
-    pred_traj_custom, t_custom = integrate_model_custom(model, t_span, static_y0, args)
-
-    scheme = choose_scheme(args.loss_type)(args)
-    corrected_model = CorrectedHNN.get(model, scheme, args.h)
-    field_corrected = get_predicted_vector_field(corrected_model, args)
-    pred_traj_corrected = integrate_model_rk45(corrected_model, t_span, static_y0, **kwargs)
-
-    # Calculate the Hamiltonian along the trajectory
-    #H = model.forward(torch.tensor(pred_traj_rk45, dtype=torch.float32)).data.numpy()
-
-    # TRUE TRAJECTORY FOR REFERENCE
-    data_loader = args.data_class(args.h, args.noise)
-    exact_field = data_loader.get_analytic_field()
-    exact_traj, _ = data_loader.get_trajectory(t_span=t_span, y0=static_y0)
-    # dataset = data_loader.get_dataset(seed=args.seed, samples=3000, test_split=0.05)  # (3000, 2, 2)
-    # dataset_plot(ax[2], dataset['coords'][:, 0], dataset['test_coords'][:, 0], args, "Dataset for ...")
-
-    # Calculate the initial Hamiltonian = Hamiltonian at all times of true trajectory
-    #Hy0 = data_loader.bundled_hamiltonian(static_y0)
-
-    # Calculate the respective errors
-    #traj_error = np.linalg.norm(pred_traj_rk45 - exact_traj, axis=1)
-    #H_error = np.abs(H - Hy0)
-
-    # === BEGIN PLOTTING ===
-    fig = plt.figure(figsize=(28, 6), facecolor='white', dpi=300)
-    ax = [fig.add_subplot(1, 5, i + 1, frameon=True) for i in range(5)]  # kwarg useful sometimes: aspect='equal'
-
-    title_true = f"True Trajectory\n (Integrated with RK45)"
-    phase_space_plot(ax[0], exact_field, exact_traj, title_true, args)
-
-    title_pred = f"Symplectic HNN: $h = {args.h}, t_f = {t_span[1]}$\n Trained with {args.loss_type}, Integrated with RK45"
-    phase_space_plot(ax[1], pred_field, pred_traj_rk45, title_pred, args)
-
-    title_custom = f"Symplectic HNN: $h = {args.h}, t_f = {t_span[1]}$\n Trained with {args.loss_type}, Integrated with {args.loss_type}"
-    phase_space_plot(ax[2], pred_field, pred_traj_custom, title_custom, args)
-
-    title_corr = f"Corrected Trajectory"
-    phase_space_plot(ax[3], field_corrected, pred_traj_corrected, title_corr, args)
-
-    lim = len(t_eval)//3
-    title_both = f"$p$ Coordinate vs. Time \n (Note: smaller t-interval for more clarity)"
-    axes = ax[4]
-    axes.plot(t_eval[:lim], exact_traj[:lim, 0], label='Exact')
-    axes.plot(t_eval[:lim], pred_traj_rk45[:lim, 0], label='Pred RK45')
-    axes.plot(t_custom[:lim], pred_traj_custom[:lim, 0], label=f'Pred {args.loss_type}')
-    axes.plot(t_eval[:lim], pred_traj_corrected[:lim, 0], label='Pred Corrected')
-    axes.set_xlabel("$t$", fontsize=14)
-    axes.set_ylabel("$p$", rotation=0, fontsize=14)
-    axes.legend()
-    axes.set_title(title_both)
-
-    #title_trajerror = f"Deviation (norm of error) of the two trajectories \n (Over full timespan, $t_f = {t_span[1]}$)"
-    #plot_helper(ax[3], t_eval, traj_error, title_trajerror)
-
-    # TODO Eventually fix the scientific notation for the axis scale, see this question:
-    #       https://stackoverflow.com/questions/42656139/set-scientific-notation-with-fixed-exponent-and-significant-digits-for-multiple
-    #title3 = r"Deviation of the Hamiltonian: $|H(y(t)) - H(y_0)|$"
-    #plot_helper(ax[3], t_eval, H_error, title3)
-
-    # Old code to investigate individual
-    #ax[2].plot(t_eval, exact_traj[:, 0], color='blue')
-    #ax[2].plot(t_eval, pred_traj_rk45[:, 0], color='red')
-
-    # SAVE FIGURE USING USUAL PATH
-    plt.savefig(save_path(args, ext='pdf'))
-
-
-def integrate_main(args):
-    args = setup(args)  # Only requires name, loss-type, h, noise (i.e. the information to locate the .tar file)
-    model, args = HNN.load(args)  # Loads the model and (re)loads all arguments as initially saved after training
-    final_plot(model, args)
-
-
-if __name__ == "__main__":
-    # This for loop allows notably for 'prompt' to accept comma-separated lists.
-    for args in load_args():
-        integrate_main(args)

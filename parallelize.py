@@ -18,13 +18,14 @@ def prompt():
     yield from custom_product(name_list=name_list, loss_type_list=loss_type_list, h_list=h_list)
 
 
-def load_args(custom_prod=None):
+def load_args(base_args=None, custom_prod=None):
     """ Loads all possible combinations of arguments provided by the user. Returns a generator object.
 
         f no custom argument combinations are given, the generator will only yield one object containing
          the arguments passed via the command line. """
-    # Load arguments
-    args = get_args()
+    if not base_args:
+        # Load arguments
+        base_args = get_args()
 
     if not custom_prod:
         # If none, just yield one time, the value 'yield args | {}' (i.e. args updated by nothing)
@@ -32,7 +33,7 @@ def load_args(custom_prod=None):
         custom_prod = [{}]
 
     for custom_args in custom_prod:
-        yield args | custom_args
+        yield base_args | custom_args
         # read the dict union '|' as: args, updated and overwritten with the keys/values from custom_args
 
 
