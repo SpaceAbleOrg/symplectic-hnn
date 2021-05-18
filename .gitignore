@@ -10,6 +10,9 @@
 # TensorBoard runs folder
 runs/
 
+# Python Testing Scripts etc
+tests/
+
 # Results Folders and Files
 experiment-*
 *.pdf
