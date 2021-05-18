@@ -21,7 +21,7 @@ from utils import save_path, to_pickle, from_pickle
 
 # This function is generic, but needs to run in a top-level file to setup the path variables
 # and define the save_directory properly.
-def setup(args):
+def setup(args, save_dir_prefix='/experiment-'):
     # Setup directory of this file as working (save) directory
     this_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(this_dir)
@@ -29,7 +29,7 @@ def setup(args):
 
     # Set the save directory if nothing is given
     if not args.save_dir:
-        args.save_dir = this_dir + '/experiment-' + args.name
+        args.save_dir = this_dir + save_dir_prefix + args.name
 
     # Store data_class directly in args for future access, and dimension for future convenience (eg of loss functions)
     args.data_class = choose_data(args.name)
@@ -145,7 +145,8 @@ def train_main(args):
     # TODO SAVE THE LOSS LOG
 
 
-def train_if_missing(args):
+def train_if_missing(args, save_dir_prefix='/experiment-'):
+    args = setup(args, save_dir_prefix=save_dir_prefix)
     if not os.path.exists(save_path(args)):
         train_main(args)
 
