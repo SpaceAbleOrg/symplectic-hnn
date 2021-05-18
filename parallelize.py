@@ -18,7 +18,7 @@ def prompt():
     yield from custom_product(name_list=name_list, loss_type_list=loss_type_list, h_list=h_list)
 
 
-def load_args(base_args=None, custom_prod=None):
+def load_args(custom_prod=None, base_args=None):
     """ Loads all possible combinations of arguments provided by the user. Returns a generator object.
 
         f no custom argument combinations are given, the generator will only yield one object containing
@@ -42,4 +42,4 @@ def train_parallel(arg_iterable, joblib_verbose=False):
 
 
 if __name__ == "__main__":
-    train_parallel(load_args(prompt()))
+    train_parallel(load_args(custom_prod=prompt()))
