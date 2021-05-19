@@ -113,8 +113,8 @@ def train(model, data, args):
         # writer.add_scalar("Loss/Test", test_loss_val, step)
 
         # logging manually
-        stats['train_loss'].append(train_loss_val)
-        stats['test_loss'].append(test_loss_val)
+        stats['train_loss'].append(train_loss_val.cpu().detach().numpy())
+        stats['test_loss'].append(test_loss_val.cpu().detach().numpy())
 
         if args.verbose and step % args.print_every == 0:
             print("step {}, train_loss {:.4e}, test_loss {:.4e}".format(step, train_loss_val, test_loss_val))

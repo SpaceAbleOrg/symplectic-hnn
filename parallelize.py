@@ -21,7 +21,7 @@ def prompt():
 def load_args(custom_prod=None, base_args=None):
     """ Loads all possible combinations of arguments provided by the user. Returns a generator object.
 
-        f no custom argument combinations are given, the generator will only yield one object containing
+        If no custom argument combinations are given, the generator will only yield one object containing
          the arguments passed via the command line. """
     if not base_args:
         # Load arguments
@@ -38,8 +38,7 @@ def load_args(custom_prod=None, base_args=None):
 
 
 def train_parallel(arg_iterable, joblib_verbose=False):
-    # n_jobs = 6 since the VPS has six vCPUs
-    Parallel(n_jobs=6, verbose=joblib_verbose)(delayed(train_main)(args) for args in arg_iterable)
+    Parallel(n_jobs=-1, verbose=joblib_verbose)(delayed(train_main)(args) for args in arg_iterable)
 
 
 if __name__ == "__main__":
