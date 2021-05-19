@@ -159,10 +159,8 @@ class HarmonicOscillator(HamiltonianDataSet):
 
     @staticmethod
     def random_initial_value():
-        # Create a random initial point between (-1, -1) and (1, 1).
-        y0 = 2 * np.random.rand(HarmonicOscillator.dimension()) - 1
-        # Ensure that the norm is at least 0.1
-        y0 = y0 / np.linalg.norm(y0) * (0.1 + np.random.rand())
+        # Create a random initial point between (-2, -2) and (2, 2).
+        y0 = 4 * (np.random.rand(HarmonicOscillator.dimension()) - 1/2)
         return y0
 
     @staticmethod
@@ -217,7 +215,7 @@ class TwoBody(HamiltonianDataSet):
     @staticmethod
     def random_initial_value():
         """ Start at a random initial point and initial momentum, in [-2, 2]^8. """
-        return 4 * (np.random.rand(TwoBody.dimension()) - 1 / 2)
+        return 4 * (np.random.rand(TwoBody.dimension()) - 1/2)
 
     @staticmethod
     def static_initial_value():
@@ -227,7 +225,7 @@ class TwoBody(HamiltonianDataSet):
 
     @staticmethod
     def plot_boundaries():
-        pass  # TODO
+        return -1.2, 1.2
 
 
 class FermiPastaUlamTsingou(HamiltonianDataSet):
