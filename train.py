@@ -108,9 +108,13 @@ def train(model, data, args):
             best_model = copy.deepcopy(model)
             best_test_loss = test_loss_val
 
-        # logging
-        writer.add_scalar("Loss/Train", train_loss_val, step)
-        writer.add_scalar("Loss/Test", test_loss_val, step)
+        # logging with tensorboard
+        #writer.add_scalar("Loss/Train", train_loss_val, step)
+        #writer.add_scalar("Loss/Test", test_loss_val, step)
+
+        # logging manually
+        stats['train_loss'].append(train_loss_val)
+        stats['test_loss'].append(test_loss_val)
 
         if args.verbose and step % args.print_every == 0:
             print("step {}, train_loss {:.4e}, test_loss {:.4e}".format(step, train_loss_val, test_loss_val))
@@ -140,9 +144,7 @@ def train_main(args):
 
     # SAVE
     os.makedirs(args.save_dir) if not os.path.exists(args.save_dir) else None
-    torch.save({'args': args, 'model': model.state_dict()}, save_path(args))
-
-    # TODO SAVE THE LOSS LOG
+    torch.save({'args': args, 'model': model.state_dict(), 'stats': loss_log}, save_path(args))
 
 
 def train_if_missing(args, save_dir_prefix='/experiment-'):

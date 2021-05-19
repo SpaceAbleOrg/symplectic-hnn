@@ -3,10 +3,36 @@
 
 import torch
 import numpy as np
-from scipy.integrate import solve_ivp
-from scipy.optimize import fixed_point
 
-from model.loss import choose_scheme
+from model.args import get_args
+
+
+# Configure MPL parameters (taken from https://github.com/jbmouret/matplotlib_for_papers)
+golden_ratio = (5**.5 - 1) / 2
+params = {
+    # Use the golden ratio to make plots aesthetically pleasing
+    'figure.figsize': [5, 5*golden_ratio],
+    # Use LaTeX to write all text
+    "text.usetex": True,
+    "font.family": "serif",
+    # Use 10pt font in plots, to match 10pt font in document
+    "axes.labelsize": 10,
+    "font.size": 10,
+    # Make the legend/label fonts a little smaller
+    "legend.fontsize": 8,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8
+}
+
+default_args = get_args(lenient=True) | {'name': 'pendulum'}  # returns the default arguments, with name overwritten
+
+print_method = {'euler-forw': "forw. Euler (HNN)",
+                'euler-symp': "symp. Euler",
+                'midpoint': "implicit midpoint"}
+print_name = {'spring': "Harmonic Oscillator",
+              'pendulum': "Pendulum",
+              'fput': "FPUT Problem",
+              'twobody': "Two-body Problem"}
 
 
 def get_predicted_vector_field(model, args, gridsize=20):
@@ -21,56 +47,6 @@ def get_predicted_vector_field(model, args, gridsize=20):
     mesh_x = torch.tensor(xs, requires_grad=True, dtype=torch.float32)
     mesh_dx = model.time_derivative(mesh_x)
     return {'x': xs, 'y': mesh_dx.data.numpy()}
-
-
-def integrate_model_rk45(model, t_span, y0, fun=None, **kwargs):
-    def default_fun(t, np_x):
-        x = torch.tensor(np_x, requires_grad=True, dtype=torch.float32)
-        x = x.view(1, np.size(np_x))  # batch size of 1
-        dx = model.time_derivative(x).data.numpy().reshape(-1)
-        return dx
-
-    # Shortcut syntax, not pythonic: fun = fun or default_fun
-    if fun is None:
-        fun = default_fun
-
-    # Note carefully the .y.T at the end of this call, to obtain the trajectory, in standard format (wrt this project)
-    return solve_ivp(fun=fun, t_span=t_span, y0=y0, **kwargs).y.T
-
-
-def integrate_model_custom(model, t_span, y0, args):
-    dim = args.dim  # assert dim == np.size(y0)
-    scheme = choose_scheme(args.loss_type)(args)
-
-    def iter_fn(y_var, yn, h):
-        y_var = torch.tensor(y_var, requires_grad=True, dtype=torch.float32).view(1, dim)
-        yn = torch.tensor(yn, requires_grad=True, dtype=torch.float32).view(1, dim)
-
-        y_arg = scheme.argument(yn, y_var)
-
-        return (yn + h * model.time_derivative(y_arg)).detach().numpy().squeeze()
-
-    y = y0
-    ys = [y0]
-    t = t_span[0]
-    ts = [t]
-
-    while t <= t_span[1]:
-        # Alternative to scipy's fixed_point: Iterate the function by hand, say 10 times for an error h^10.
-        #yn = y
-        #for i in range(10):
-        #    y = iter_fn(y, yn, args.h)
-
-        # Kwarg method='iteration' possible, too, without accelerated convergence
-        # Kwarg xtol=1e-8 normally not attainable with <500 iterations
-        y = fixed_point(iter_fn, y, args=(y, args.h), xtol=1e-4)
-
-        ys.append(y)
-        t += args.h
-        ts.append(t)
-
-    return np.array(ys), np.array(ts)
-    # return np.array(ys)
 
 
 def phase_space_helper(axes, boundary, title, aspect_equal=False):
