@@ -10,7 +10,7 @@ import sys
 import copy
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 
 from model.loss import OneStepLoss
 from model.hnn import HNN
@@ -82,7 +82,7 @@ def train(model, data, args):
 
     best_model, best_test_loss = model, np.infty
     stats = {'train_loss': [], 'test_loss': []}
-    writer = SummaryWriter()
+    # writer = SummaryWriter()
     for step in range(args.epochs + 1):
 
         # Use stochastic gradient descent (SGD) with args.batch_size
@@ -109,8 +109,8 @@ def train(model, data, args):
             best_test_loss = test_loss_val
 
         # logging with tensorboard
-        #writer.add_scalar("Loss/Train", train_loss_val, step)
-        #writer.add_scalar("Loss/Test", test_loss_val, step)
+        # writer.add_scalar("Loss/Train", train_loss_val, step)
+        # writer.add_scalar("Loss/Test", test_loss_val, step)
 
         # logging manually
         stats['train_loss'].append(train_loss_val)

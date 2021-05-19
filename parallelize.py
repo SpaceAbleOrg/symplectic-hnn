@@ -38,7 +38,8 @@ def load_args(custom_prod=None, base_args=None):
 
 
 def train_parallel(arg_iterable, joblib_verbose=False):
-    Parallel(n_jobs=-1, verbose=joblib_verbose)(delayed(train_main)(args) for args in arg_iterable)
+    # n_jobs = 6 since the VPS has six vCPUs
+    Parallel(n_jobs=6, verbose=joblib_verbose)(delayed(train_main)(args) for args in arg_iterable)
 
 
 if __name__ == "__main__":
