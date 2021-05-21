@@ -62,6 +62,8 @@ def integrate_model_custom(model, t_span, y0, args):
 
 
 def hamiltonian_error_grid(model, data_loader):
+    # TODO This function doesn't necessarily generelize very well to dimensions n>2. To verify.
+
     dim = data_loader.dimension()
     n = dim//2
 
@@ -92,7 +94,8 @@ def hamiltonian_error_grid(model, data_loader):
 def hamiltonian_error_sampled(model, data_loader, N=2000):
     # Create an array y0 of N samples in the shape (N, dim) where dim is the dim of the specific problem, i.e.
     dim = data_loader.dimension()
-    y0_list = [data_loader.random_initial_value() for _ in range(N)]
+    # draw_omega_m ensures that we don't draw values from the boundary of \Omega_d, where the model isn't well trained
+    y0_list = [data_loader.random_initial_value(draw_omega_m=True) for _ in range(N)]
     y0 = torch.tensor(np.array(y0_list), dtype=torch.float32, requires_grad=True)
 
     # Also create a zero tensor of shape (1, dim)
