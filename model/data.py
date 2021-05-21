@@ -69,23 +69,35 @@ class HamiltonianDataSet(ABC):
 
     @staticmethod
     @abstractmethod
-    def random_initial_value():
-        """ Return a random initial value which will be used to generate individual trajectories for the dataset. """
+    def phase_space_boundaries():
+        """ Using these values, cls.random_initial_point() creates a random initial point
+            from the interval [cmin, cmax]^dim where dim=cls.dimension(). """
+        # To implement as: return cmin, cmax
         pass
+
+    @classmethod
+    def random_initial_value(cls, draw_omega_m=False):
+        """ Return a random initial value which will be used to generate individual trajectories for the dataset.
+            The space this is drawn from is denoted $\Omega_d$, i.e. the 'data generation' region of phase space.
+
+            By default this is simply drawn uniformly from the interval provided by `cls.phase_space_boundaries()`
+            raised to `cls.dimension()` (i.e. one value from this interval for each dimension of the problem). """
+        cmin, cmax = cls.phase_space_boundaries()
+        d = cmax - cmin
+        m = (cmax + cmin) / 2
+
+        if draw_omega_m:
+            # If measuring from \Omega_m, divide by the (2n)th root of 2, so that the region $\Omega_m$ has half
+            # the hyper volume of the region \Omega_d
+            d /= 2**(1/cls.dimension())
+
+        return (d * np.random.rand(cls.dimension())) + m - d/2
 
     @staticmethod
     @abstractmethod
     def static_initial_value():
         """ Return a canonical (constant) initial value for plotting an individual trajectory to exemplify
             the flow predicted by the (Symplectic) HNN; obtained by integrating the HNN's gradient vector field. """
-        pass
-
-    @staticmethod
-    @abstractmethod
-    def plot_boundaries():
-        """ Return a 2-tuple of p- and q- boundaries for plotting 2 dimensional systems. """
-        # TODO This should be upgraded to define some custom plotting code for each system,
-        #       depending on its dimensionality etc.
         pass
 
     def get_trajectory(self, t_span=(0, 3), rtol=1e-9, y0=None, **kwargs):
@@ -158,18 +170,12 @@ class HarmonicOscillator(HamiltonianDataSet):
         return H
 
     @staticmethod
-    def random_initial_value():
-        # Create a random initial point between (-2, -2) and (2, 2).
-        y0 = 4 * (np.random.rand(HarmonicOscillator.dimension()) - 1/2)
-        return y0
+    def phase_space_boundaries():
+        return -2, 2
 
     @staticmethod
     def static_initial_value():
         return np.array([0., 1.])
-
-    @staticmethod
-    def plot_boundaries():
-        return -1.2, +1.2
 
 
 class NonlinearPendulum(HamiltonianDataSet):
@@ -185,19 +191,12 @@ class NonlinearPendulum(HamiltonianDataSet):
         return H
 
     @staticmethod
-    def random_initial_value():
-        """ Start at a random initial point and initial momentum, respectively between (-π, +π) rad. """
-        theta = 4 * np.pi * (np.random.rand() - 1/2)
-        p = 2 * np.pi * (np.random.rand() - 1/2)
-        return np.array([p, theta])
+    def phase_space_boundaries():
+        return -2*np.pi, 2*np.pi
 
     @staticmethod
     def static_initial_value():
         return np.array([0.2, 2.5])
-
-    @staticmethod
-    def plot_boundaries():
-        return -3.3, +3.3
 
 
 class TwoBody(HamiltonianDataSet):
@@ -213,19 +212,33 @@ class TwoBody(HamiltonianDataSet):
         return H
 
     @staticmethod
-    def random_initial_value():
-        """ Start at a random initial point and initial momentum, in [-2, 2]^8. """
-        return 4 * (np.random.rand(TwoBody.dimension()) - 1/2)
+    def phase_space_boundaries():
+        return -1.5, 1.5
+
+    @classmethod
+    def random_initial_value(cls, draw_omega_m=False):
+        """ Start at a random initial point and initial momentum, in the interval provided by
+            `TwoBody.phase_space_boundaries()` for each dimension of the problem (see `TwoBody.dimension()`).
+
+            However, ensure that the distance of the two bodies squared is not smaller than a certain threshold
+            in order to avoid the poles of the Hamiltonian. Should a provided value provided by the superclass
+            implementation violate this condition, redraw. """
+        threshold = 1e-1
+
+        # The fact that this problem is defined for dimension 8 is hardcoded here.
+        y = super().random_initial_value()  # = (p1, p2, q1, q2) which are all respectively of dimension 2
+
+        q1, q2 = y[4:6], y[6:8]
+        if ((q1 - q2) ** 2).sum() < threshold:
+            return cls.random_initial_value()  # redraw
+        else:
+            return y
 
     @staticmethod
     def static_initial_value():
         p1, p2 = np.array([0.8, 0]), np.array([-1.2, 0])
         q1, q2 = np.array([0, 1]), np.array([0, -1])
         return np.concatenate((p1, p2, q1, q2))
-
-    @staticmethod
-    def plot_boundaries():
-        return -1.2, 1.2
 
 
 class FermiPastaUlamTsingou(HamiltonianDataSet):
@@ -242,10 +255,10 @@ class FermiPastaUlamTsingou(HamiltonianDataSet):
         return H
 
     @staticmethod
-    def random_initial_value():
-        """ Generates a random initial state vector in [-2, +2]^DIM where the true solution lives. """
-        L = 2.1  # The "true" RK45 solution has p and q oscillating between -2 and +2, as well as x, y in [-1.5, +1.5]
-        return L * (2 * np.random.rand(FermiPastaUlamTsingou.dimension()) - 1)
+    def phase_space_boundaries():
+        # The "true" RK45 solution has p and q oscillating between -2 and +2,
+        # these limits ensure that this hypercube is well covered.
+        return -2.1, 2.1
 
     @staticmethod
     def static_initial_value(**kwargs):
@@ -255,7 +268,3 @@ class FermiPastaUlamTsingou(HamiltonianDataSet):
         p0 = np.array([0, sq2, 0, 0, 0, 0])
         q0 = np.array([(1 - 1/omega)/sq2, (1 + 1/omega)/sq2, 0, 0, 0, 0])
         return np.concatenate((p0, q0))
-
-    @staticmethod
-    def plot_boundaries():
-        pass  # TODO
