@@ -17,6 +17,7 @@ tests/
 results/
 experiment-*
 *.pdf
+backup/
 
 # Data Folders
 simulation-data
