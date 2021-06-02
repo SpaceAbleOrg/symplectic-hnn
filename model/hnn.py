@@ -7,6 +7,7 @@
 
 import torch
 
+from model.args import UpdatableNamespace
 from model.standard_nn import MLP
 from model.data import symplectic_form
 from utils import save_path
@@ -29,9 +30,13 @@ class HNN(torch.nn.Module):
         return model.to('cuda') if torch.cuda.is_available() else model
 
     @staticmethod
-    def load(args):
-        saved_dict = torch.load(save_path(args))
-        args = saved_dict['args']  # Loads all other arguments as saved initially when the model was trained
+    def load(args, cpu=False):
+        if cpu:
+            saved_dict = torch.load(save_path(args), map_location=torch.device('cpu'))
+        else:
+            saved_dict = torch.load(save_path(args))
+
+        args = UpdatableNamespace.get(saved_dict['args'])  # Loads all other arguments as saved initially during training
 
         # Create a model using the same args and load its state_dict
         model = HNN.create(args)
