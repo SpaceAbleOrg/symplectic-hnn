@@ -36,6 +36,7 @@ def get_t_eval(t_span, h):
 def choose_data(name):
     datasets = {'spring': HarmonicOscillator,
                 'pendulum': NonlinearPendulum,
+                'double-pendulum': DoublePendulum,
                 'fput': FermiPastaUlamTsingou,  # FPUT = Fermi-Pasta-Ulam-Tsingou (see GNI book)
                 'twobody': TwoBody
                 }
@@ -53,14 +54,16 @@ class HamiltonianDataSet(ABC):
     def dimension():
         pass
 
+    @classmethod
     @abstractmethod
-    def hamiltonian(self, p, q, t=None):
+    def hamiltonian(cls, p, q, t=None):
         """ To implement the Hamiltonian function H(p, q) of the respective system. All functions must be from
             the `autograd.numpy` library to automatically allow generation of training data sets. """
         pass
 
-    def bundled_hamiltonian(self, coords, t=None):
-        return self.hamiltonian(*np.split(coords, 2), t=t).squeeze()
+    @classmethod
+    def bundled_hamiltonian(cls, coords, t=None):
+        return cls.hamiltonian(*np.split(coords, 2), t=t).squeeze()
 
     def dynamics_fn(self, t, coords):
         gradH = autograd.grad(self.bundled_hamiltonian)(coords, t=t)
@@ -87,11 +90,18 @@ class HamiltonianDataSet(ABC):
         m = (cmax + cmin) / 2
 
         if draw_omega_m:
-            # If measuring from \Omega_m, divide by the (2n)th root of 2, so that the region $\Omega_m$ has half
-            # the hyper volume of the region \Omega_d
-            d /= 2**(1/cls.dimension())
+            # VERSION 1
+            # If measuring from \Omega_m, divide by the (2n)th root of fm (fm=2 by default),
+            # so that the region $\Omega_m$ has 1/fm the hyper volume of the region \Omega_d
+            # fm = 2
+            # d /= fm**(1/cls.dimension())
+            # This does not work well for dimensions 8 (twobody problem) or higher, because 2^(1/8) = 1.1
 
-        return (d * np.random.rand(cls.dimension())) + m - d/2
+            # VERISON 2
+            # Simply divide all by the square root of 2.
+            d /= np.sqrt(2)
+
+        return (d * np.random.rand(cls.dimension())) + m - d / 2
 
     @staticmethod
     @abstractmethod
@@ -100,8 +110,9 @@ class HamiltonianDataSet(ABC):
             the flow predicted by the (Symplectic) HNN; obtained by integrating the HNN's gradient vector field. """
         pass
 
-    def get_trajectory(self, t_span=(0, 3), rtol=1e-9, y0=None, **kwargs):
-        t_eval = get_t_eval(t_span, self.h)
+    def get_trajectory(self, t_span=(0, 3), rtol=1e-9, y0=None, t_eval=None, **kwargs):
+        if t_eval is None:
+            t_eval = get_t_eval(t_span, self.h)
 
         if y0 is None:
             y0 = self.random_initial_value()
@@ -144,7 +155,7 @@ class HamiltonianDataSet(ABC):
         field = {'meta': locals()}
 
         # Meshgrid to get lattice
-        cmin, cmax = self.plot_boundaries()
+        cmin, cmax = self.phase_space_boundaries()
         b, a = np.meshgrid(np.linspace(cmin, cmax, gridsize), np.linspace(cmin, cmax, gridsize))
         ys = np.stack([b.flatten(), a.flatten()])
 
@@ -165,8 +176,9 @@ class HarmonicOscillator(HamiltonianDataSet):
         """ Returns 2 for the full system's dimensionality: one q position coordinate, one p momentum coordinate. """
         return 2
 
-    def hamiltonian(self, p, q, t=None):
-        H = 1/2 * (p ** 2 + q ** 2)
+    @classmethod
+    def hamiltonian(cls, p, q, t=None):
+        H = 1 / 2 * (p ** 2 + q ** 2)
         return H
 
     @staticmethod
@@ -175,7 +187,7 @@ class HarmonicOscillator(HamiltonianDataSet):
 
     @staticmethod
     def static_initial_value():
-        return np.array([0., 1.])
+        return np.array([0., 1.5])
 
 
 class NonlinearPendulum(HamiltonianDataSet):
@@ -186,17 +198,56 @@ class NonlinearPendulum(HamiltonianDataSet):
         """ Returns 2 for the full system's dimensionality: one q position coordinate, one p momentum coordinate. """
         return 2
 
-    def hamiltonian(self, p, q, t=None):
-        H = 1/2 * p ** 2 + (1 - autograd.numpy.cos(q))
+    @classmethod
+    def hamiltonian(cls, p, q, t=None):
+        H = 1 / 2 * p ** 2 + (1 - autograd.numpy.cos(q))
         return H
 
     @staticmethod
     def phase_space_boundaries():
-        return -2*np.pi, 2*np.pi
+        return -np.pi, np.pi
+
+    @classmethod
+    def random_initial_value(cls, draw_omega_m=False, bound_energy=False):
+        y = super().random_initial_value(draw_omega_m=draw_omega_m)
+
+        if not bound_energy:
+            return y
+
+        # else check if the y has enough energy to do a full spin (i.e. H > 2, with an extra threshold of 0.1 here)
+        if cls.bundled_hamiltonian(y) > 2 - 0.1:
+            return cls.random_initial_value(draw_omega_m=draw_omega_m, bound_energy=True)
+        else:
+            return y
 
     @staticmethod
     def static_initial_value():
-        return np.array([0.2, 2.5])
+        return np.array([0., 3])
+
+
+class DoublePendulum(HamiltonianDataSet):
+    """ Implements the Hamiltonian of a double pendulum. """
+
+    @staticmethod
+    def dimension():
+        """ Returns 4 for the full system's dimensionality:
+            two q angle coordinates, two p (angular) momentum coordinates. """
+        return 4
+
+    @classmethod
+    def hamiltonian(cls, p, q, t=None):
+        an = autograd.numpy
+        qdiff = q[0] - q[1]
+        return (1 / 2 * p[0] ** 2 + p[1] ** 2 - p[0] * p[1] * an.cos(qdiff)) / (1 + an.sin(qdiff) ** 2) \
+               - 2 * an.cos(q[0]) - an.cos(q[1])
+
+    @staticmethod
+    def phase_space_boundaries():
+        return -np.pi, np.pi
+
+    @staticmethod
+    def static_initial_value():
+        return np.array([0, 0, np.pi/2, np.pi/2])
 
 
 class TwoBody(HamiltonianDataSet):
@@ -207,8 +258,11 @@ class TwoBody(HamiltonianDataSet):
         """ Returns 8 for the full system's dimensionality: two q position coordinates, two p momentum coordinates. """
         return 8
 
-    def hamiltonian(self, p, q, t=None):
-        H = 1/2 * autograd.numpy.sum(p ** 2) + 1 / autograd.numpy.sum((q[0:2] - q[2:4]) ** 2)
+    @classmethod
+    def hamiltonian(cls, p, q, t=None):
+        epsilon = 1e-1
+        H = 1 / 2 * autograd.numpy.sum(p ** 2) + 1 / (
+                autograd.numpy.sum(autograd.numpy.abs((q[0:2] - q[2:4]))) + epsilon)
         return H
 
     @staticmethod
@@ -223,16 +277,19 @@ class TwoBody(HamiltonianDataSet):
             However, ensure that the distance of the two bodies squared is not smaller than a certain threshold
             in order to avoid the poles of the Hamiltonian. Should a provided value provided by the superclass
             implementation violate this condition, redraw. """
-        threshold = 1e-1
 
-        # The fact that this problem is defined for dimension 8 is hardcoded here.
         y = super().random_initial_value()  # = (p1, p2, q1, q2) which are all respectively of dimension 2
 
-        q1, q2 = y[4:6], y[6:8]
-        if ((q1 - q2) ** 2).sum() < threshold:
-            return cls.random_initial_value()  # redraw
-        else:
-            return y
+        # If the Hamiltonian is not regularized, ensure that generated initial data is far from any poles.
+        # The fact that this problem is defined for dimension 8 is hardcoded here.
+        # threshold = 1e-1
+        # q1, q2 = y[4:6], y[6:8]
+        # if ((q1 - q2) ** 2).sum() < threshold:
+        #    return cls.random_initial_value()  # redraw
+        # else:
+        #    return y
+
+        return y
 
     @staticmethod
     def static_initial_value():
@@ -248,9 +305,10 @@ class FermiPastaUlamTsingou(HamiltonianDataSet):
     def dimension():
         return 12
 
-    def hamiltonian(self, p, q, t=None, omega=1):
-        H = 1/2 * autograd.numpy.sum(p ** 2)\
-            + omega**2 / 4 * autograd.numpy.sum((q[1::2] - q[::2]) ** 2)\
+    @classmethod
+    def hamiltonian(cls, p, q, t=None, omega=1):
+        H = 1 / 2 * autograd.numpy.sum(p ** 2) \
+            + omega ** 2 / 4 * autograd.numpy.sum((q[1::2] - q[::2]) ** 2) \
             + q[0] ** 4 + q[-1] ** 4 + autograd.numpy.sum((q[2::2] - q[1:-1:2]) ** 4)  # non-linear springs
         return H
 
@@ -266,5 +324,5 @@ class FermiPastaUlamTsingou(HamiltonianDataSet):
         sq2 = np.sqrt(2)
 
         p0 = np.array([0, sq2, 0, 0, 0, 0])
-        q0 = np.array([(1 - 1/omega)/sq2, (1 + 1/omega)/sq2, 0, 0, 0, 0])
+        q0 = np.array([(1 - 1 / omega) / sq2, (1 + 1 / omega) / sq2, 0, 0, 0, 0])
         return np.concatenate((p0, q0))
