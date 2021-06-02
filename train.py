@@ -10,6 +10,8 @@ import sys
 import copy
 import numpy as np
 import torch
+from timeit import default_timer as timer
+from datetime import timedelta
 # from torch.utils.tensorboard import SummaryWriter
 
 from model.loss import OneStepLoss
@@ -82,6 +84,7 @@ def train(model, data, args):
 
     best_model, best_test_loss = model, np.infty
     stats = {'train_loss': [], 'test_loss': []}
+    start_time = timer()
     # writer = SummaryWriter()
     for step in range(args.epochs + 1):
 
@@ -101,8 +104,8 @@ def train(model, data, args):
 
         # run test data
         model.eval()
-        train_loss_val = loss_fct(model, x, t)
-        test_loss_val = loss_fct(model, test_x, test_t)
+        train_loss_val = loss.cpu().detach()
+        test_loss_val = loss_fct(model, test_x, test_t).cpu().detach()
 
         if step > args.epochs/2 and test_loss_val < best_test_loss:
             best_model = copy.deepcopy(model)
@@ -113,15 +116,16 @@ def train(model, data, args):
         # writer.add_scalar("Loss/Test", test_loss_val, step)
 
         # logging manually
-        stats['train_loss'].append(train_loss_val.cpu().detach().numpy())
-        stats['test_loss'].append(test_loss_val.cpu().detach().numpy())
+        stats['train_loss'].append(train_loss_val)
+        stats['test_loss'].append(test_loss_val)
 
         if args.verbose and step % args.print_every == 0:
-            print("step {}, train_loss {:.4e}, test_loss {:.4e}".format(step, train_loss_val, test_loss_val))
+            print(f"step {step}, train_loss {train_loss_val:.4e}, test_loss {test_loss_val:.4e}",
+                  f"   ({timedelta(seconds=int(timer()-start_time))} (h/m/s) elapsed)")
 
     # Final evaluation using the best_model
-    train_dist = loss_fct(best_model, x, t, return_dist=True)
-    test_dist = loss_fct(best_model, test_x, test_t, return_dist=True)
+    train_dist = loss_fct(best_model, x, t, return_dist=True).cpu().detach().numpy()
+    test_dist = loss_fct(best_model, test_x, test_t, return_dist=True).cpu().detach().numpy()
     print('Final train loss {:.4e} +/- {:.4e}\nFinal test loss {:.4e} +/- {:.4e}'
           .format(train_dist.mean().item(), train_dist.std().item() / np.sqrt(train_dist.shape[0]),
                   test_dist.mean().item(), test_dist.std().item() / np.sqrt(test_dist.shape[0])))

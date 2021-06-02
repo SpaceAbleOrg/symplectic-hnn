@@ -14,7 +14,7 @@ runs/
 tests/
 
 # Results Folders and Files
-results/
+results*
 experiment-*
 *.pdf
 backup/

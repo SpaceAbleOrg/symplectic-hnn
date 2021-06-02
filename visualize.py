@@ -15,13 +15,14 @@ params = {
     # Use LaTeX to write all text
     "text.usetex": True,
     "font.family": "serif",
-    # Use 10pt font in plots, to match 10pt font in document
-    "axes.labelsize": 10,
-    "font.size": 10,
-    # Make the legend/label fonts a little smaller
-    "legend.fontsize": 8,
-    "xtick.labelsize": 8,
-    "ytick.labelsize": 8
+    # Use 10pt font in plots, to match 10pt font in document, titles slightly larger
+    # In the end, most plots will anyhow be shrunk to fit onto a US Letter / DIN A4 page
+    "axes.titlesize": 14,
+    "axes.labelsize": 12,
+    "font.size": 12,
+    "legend.fontsize": 10,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10
 }
 
 default_args = get_args(lenient=True) | {'name': 'pendulum'}  # returns the default arguments, with name overwritten
@@ -31,13 +32,14 @@ print_method = {'euler-forw': "forw. Euler (HNN)",
                 'midpoint': "implicit midpoint"}
 print_name = {'spring': "Harmonic Oscillator",
               'pendulum': "Pendulum",
+              'double-pendulum': "Double Pendulum",
               'fput': "FPUT Problem",
               'twobody': "Two-body Problem"}
 
 
 def get_predicted_vector_field(model, args, gridsize=20):
     """ Calculates the vector field predicted by an HNN by evaluating the network's prediction on a meshgrid. """
-    cmin, cmax = args.data_class.plot_boundaries()
+    cmin, cmax = args.data_class.phase_space_boundaries()
 
     # Mesh grid to get lattice
     b, a = np.meshgrid(np.linspace(cmin, cmax, gridsize), np.linspace(cmin, cmax, gridsize))
@@ -51,9 +53,9 @@ def get_predicted_vector_field(model, args, gridsize=20):
 
 def phase_space_helper(axes, boundary, title, aspect_equal=False):
     """ Sets up a phase space plot with the correct axis labels, boundaries and title. """
-    axes.set_xlabel("$p$", fontsize=14)
-    axes.set_ylabel("$q$", rotation=0, fontsize=14)
-    axes.set_title(title, pad=10)
+    axes.set_xlabel("$p$")  # fontsize=14)
+    axes.set_ylabel("$q$", rotation=0)  # fontsize=14)
+    axes.set_title(title)  # pad=10)
 
     if aspect_equal:
         axes.set_aspect('equal')

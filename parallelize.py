@@ -1,6 +1,7 @@
 # Symplectic Hamiltonian Neural Networks | 2021
 # Marco David
 
+from torch import cuda
 from joblib import Parallel, delayed
 
 from model.args import get_args, custom_product
@@ -37,9 +38,22 @@ def load_args(custom_prod=None, base_args=None):
         # read the dict union '|' as: args, updated and overwritten with the keys/values from custom_args
 
 
-def train_parallel(arg_iterable, joblib_verbose=False):
-    Parallel(n_jobs=-1, verbose=joblib_verbose)(delayed(train_main)(args) for args in arg_iterable)
+def train_parallel(arg_iterable, n_jobs=4, joblib_verbose=False):
+    if n_jobs > 4:
+        print("WARNING: ")
+    Parallel(n_jobs=n_jobs, verbose=joblib_verbose)(delayed(train_main)(args) for args in arg_iterable)
 
 
 if __name__ == "__main__":
-    train_parallel(load_args(custom_prod=prompt()))
+    # On the Virtual Private Server used to train these models, there is only 1 GPU, so parallelizing has no advantage.
+    # Thus, only parallelize when CUDA is not available. A single run (model + dataset) easily uses 2-3 GB of memory,
+    # so keep n_jobs <= 4 in case of a CPU and parallelization.
+    if cuda.is_available():
+        print("Training on GPU. Assuming only 1 kernel is available. Hence, will train all models sequentially.")
+        for args in load_args(custom_prod=prompt()):
+            print("=====================================")
+            print(f"Next model: Now training {args.name}, h={args.h} with {args.loss_type}...")
+            train_main(args)
+    else:
+        print("Training on CPU. Will parallelize the training of all possible parameter combinations.")
+        train_parallel(load_args(custom_prod=prompt()))
