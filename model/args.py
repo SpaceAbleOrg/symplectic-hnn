@@ -1,6 +1,10 @@
 # Symplectic Hamiltonian Neural Networks | 2021
 # Marco David
 
+# Originally written for the project and by:
+# Hamiltonian Neural Networks | 2019
+# Sam Greydanus, Misko Dzamba, Jason Yosinski
+
 import time
 import itertools
 
