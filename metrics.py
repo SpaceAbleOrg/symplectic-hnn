@@ -78,14 +78,14 @@ def integrate_trajectory(model, args, t_span, y0, same_method, t_eval=None):
     return y, t
 
 
-def hamiltonian_error_grid(model, data_loader):
+def hamiltonian_error_grid(model, data_loader, N=50):
     # TODO This function doesn't necessarily generelize very well to dimensions n>2. To verify.
 
     dim = data_loader.dimension()
     n = dim//2
 
-    cmin, cmax = data_loader.plot_boundaries()
-    p, q = np.linspace(cmin, cmax), np.linspace(cmin, cmax)
+    cmin, cmax = data_loader.phase_space_boundaries()
+    p, q = np.linspace(cmin, cmax, N), np.linspace(cmin, cmax, N)
     P, Q = np.meshgrid(*([p]*n), *([q]*n))
 
     y_flat = np.stack((P, Q), axis=-1).reshape(-1, 2)  # reshape (50, 50, 2) to (2500, 2)
