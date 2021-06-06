@@ -18,6 +18,7 @@ results*
 experiment-*
 *.pdf
 backup/
+plotting-*
 
 # Data Folders
 simulation-data
