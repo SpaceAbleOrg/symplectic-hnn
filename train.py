@@ -1,10 +1,3 @@
-# Symplectic Hamiltonian Neural Networks | 2021
-# Marco David
-
-# Originally written for the project and by:
-# Hamiltonian Neural Networks | 2019
-# Sam Greydanus, Misko Dzamba, Jason Yosinski
-
 import os
 import sys
 import copy
@@ -88,8 +81,7 @@ def train(model, data, args):
     # writer = SummaryWriter()
     for step in range(args.epochs + 1):
 
-        # Use stochastic gradient descent (SGD) with args.batch_size
-        # – – TODO indexing into tensors is slow and not supported (?) on GPU
+        # Use stochastic gradient descent (SGD) with args.batch_size – TODO
         # for ixs in torch.split(torch.arange(x.shape[0]), args.batch_size):
         #     ...
         #     loss = loss_fct(model, x[ixs], t[ixs])
@@ -159,5 +151,5 @@ def train_if_missing(args, save_dir_prefix='/experiment-'):
 
 if __name__ == "__main__":
     """ This file can be run with one well-defined set of arguments. To run for several configurations at once,
-        please resort to the parallelize.py file. """
+        please consult the parallelize.py file. """
     train_main(get_args())

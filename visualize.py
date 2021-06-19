@@ -1,6 +1,3 @@
-# Symplectic Hamiltonian Neural Networks | 2021
-# Marco David
-
 import torch
 import numpy as np
 

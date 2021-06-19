@@ -1,6 +1,3 @@
-# Symplectic Hamiltonian Neural Networks | 2021
-# Marco David and Florian Méhats
-
 import torch
 import pickle
 import numpy as np
@@ -16,6 +13,8 @@ from train import setup
 
 
 def integrate_model_rk45(model, t_span, t_eval, y0, fun=None, **kwargs):
+    """ Integrates a given model using scipy's RK45 method, starting from the initial value `y0` over the given
+        `t_span`. Returns the values y(t) obtained for each t value in `t_eval`. """
     def default_fun(t, np_x):
         x = torch.tensor(np_x, requires_grad=True, dtype=torch.float32)
         x = x.view(1, np.size(np_x))  # batch size of 1
@@ -31,6 +30,9 @@ def integrate_model_rk45(model, t_span, t_eval, y0, fun=None, **kwargs):
 
 
 def integrate_model_custom(model, t_span, y0, args):
+    """ Integrates the given model starting from the initial point y0, using the integration scheme determined by
+        `args.loss_type` with a time step `args.h`. That means, this method uses the same scheme and step as used during
+        the training of the model. """
     dim = args.dim  # assert dim == np.size(y0)
     scheme = choose_scheme(args.loss_type)(args)
 
@@ -49,12 +51,11 @@ def integrate_model_custom(model, t_span, y0, args):
 
     while t <= t_span[1]:
         # Alternative to scipy's fixed_point: Iterate the function by hand, say 10 times for an error h^10.
-        #yn = y
-        #for i in range(10):
-        #    y = iter_fn(y, yn, args.h)
+        # yn = y
+        # for i in range(10):
+        #     y = iter_fn(y, yn, args.h)
 
         # Kwarg method='iteration' possible, too, without accelerated convergence
-        # Kwarg xtol=1e-8 normally not attainable with <500 iterations
         y = fixed_point(iter_fn, y, args=(y, args.h), xtol=1e-4)
 
         ys.append(y)
@@ -65,6 +66,11 @@ def integrate_model_custom(model, t_span, y0, args):
 
 
 def integrate_trajectory(model, args, t_span, y0, same_method, t_eval=None):
+    """ This method wraps the two methods ```integrate_model_custom``` and ```integrate_model_rk45```. Thus, it allows
+        to obtain some predicted trajectory from a model and its arguments; either by exactly following the predicted
+        vector field using RK45 (i.e. the learned modified vector field, in the case of a symplectic method)
+        or by using the same method as used during training (which can even yield the exact solution of the true
+        Hamiltonian, see the theory in the article). """
     if t_eval is None:
         t_eval = get_t_eval(t_span, args.h)
 
@@ -79,7 +85,11 @@ def integrate_trajectory(model, args, t_span, y0, same_method, t_eval=None):
 
 
 def hamiltonian_error_grid(model, data_loader, N=50):
-    # TODO This function doesn't necessarily generelize very well to dimensions n>2. To verify.
+    """ This function computes a 2D meshgrid of the region \Omega_d in phase space and calculates the error between
+        the predicted and true Hamiltonians at each point on this grid. It returns the grid and the error arrays which
+        allow to easily plot the results as a contour plot.
+
+        WARNING: This function doesn't generalize well to dimensions > 2."""
 
     dim = data_loader.dimension()
     n = dim//2
@@ -109,6 +119,12 @@ def hamiltonian_error_grid(model, data_loader, N=50):
 
 
 def hamiltonian_error_sampled(model, data_loader, omega_m, N=2000):
+    """ This function computes the error between the predicted and true Hamiltonians in the region \Omega_d in phase
+        space by randomly sampling N points in this region. This function returns the full distribution of errors
+        which can be used to do a statistical analysis, afterwards.
+
+        This function works in any dimension."""
+
     # Create an array y0 of N samples in the shape (N, dim) where dim is the dim of the specific problem, i.e.
     dim = data_loader.dimension()
     # draw_omega_m ensures that we don't draw values from the boundary of \Omega_d, where the model isn't well trained
@@ -131,6 +147,7 @@ def hamiltonian_error_sampled(model, data_loader, omega_m, N=2000):
 
 
 def load_model(args, corrected, save_dir_prefix):
+    """ This function wraps the `HNN.load` function. """
     # Only requires name, loss-type, h, noise (to locate the .tar file)
     args = setup(args, save_dir_prefix=save_dir_prefix)
 
@@ -145,6 +162,11 @@ def load_model(args, corrected, save_dir_prefix):
 
 
 def calc_herr(base_args, hs, omega_m=True, corrected=False, save_dir_prefix='/results/experiment-'):
+    """ This function wraps the function `hamiltonian_error_sampled` by computing the mean and the quartiles
+        of the distribution of errors in phase space. Moreover, it does do for an arbitrary number of different values
+        of h, loading a new trained model each time.
+
+        Additionally, it allows to instantiate a CorrectedHNN using the kwarg `corrected`. """
     errors = []
     for h in hs:
         args = base_args | {'h': h}
@@ -179,6 +201,12 @@ def calc_herr(base_args, hs, omega_m=True, corrected=False, save_dir_prefix='/re
 
 
 def calc_mse(args, t_span, N=30, same_method=False, corrected=False, t_eval=None, save_dir_prefix='/results/experiment-'):
+    """ This function calculates the mean squared error (MSE) in the coordinates of a predicted trajectoy, with respect
+        to the true trajectory (obtained by integrating the real Hamiltonian system with RK45 and low error tolerance).
+        It does so for N randomly chosen initial values (drawn from Omega_m), and returns the mean error over all
+         these samples, together with the standard error of the mean.
+
+        The results are not returned but rather pickled into a file, which can be loaded with `load_mse`. """
     model, new_args = load_model(args, corrected, save_dir_prefix)
 
     data_loader = new_args.data_class(new_args.h, new_args.noise)
@@ -207,6 +235,7 @@ def calc_mse(args, t_span, N=30, same_method=False, corrected=False, t_eval=None
 
 
 def load_mse(args, corrected=False):
+    """ This function loads and returns the MSE in coordinates (and its standard error) as saved by `calc_mse`. """
     with open(args.save_dir + f"/mse-{args.name}-{args.loss_type}{'-corrected' if corrected else ''}-h{args.h}.pck", "rb") as file:
         return pickle.load(file)
         # return stored_dict['mse'], stored_dict['stderr']

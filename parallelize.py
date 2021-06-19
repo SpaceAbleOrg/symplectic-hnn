@@ -1,6 +1,3 @@
-# Symplectic Hamiltonian Neural Networks | 2021
-# Marco David
-
 from torch import cuda
 from joblib import Parallel, delayed
 
