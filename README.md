@@ -13,7 +13,8 @@ correspondence related to this work can be found in the article PDF file.
 This project was written in Python 3.9. Its dependencies are specified in the `environment.yml` file
 contained in this repository, which can be used to automatically create an anaconda virtual environment.
 
-To run the code locally, first clone the repository using ```git clone (TODO insert link)```, then ```cd shnn```.
+To run the code locally, first clone the repository using ```git clone https://github.com/SpaceAbleOrg/symplectic-hnn.git```,
+then ```cd symplectic-hnn```.
 Create the anaconda virtual environment using ```conda env create -f environment.yml``` and activate it as
 ```conda activate main3.9```.
 
@@ -35,7 +36,8 @@ were initially used to train the model.
 
 #### Repository Structure
 
-The main source code for our models (an adaption of [the official implementation of HNNs](https://github.com/greydanus/hamiltonian-nn))
+The main source code for our models (an adaption of [the first implementation of HNNs](https://github.com/greydanus/hamiltonian-nn)
+by Greydanus et al.)
 is contained in the directory `model`. Other than the neural networks built with PyTorch, it contains the
 various symplectic and non-symplectic loss functions, an abstract base class to generate data sets (including
 example subclasses, notably those used in our work) and an argument parser. All this code is polymorphic and
