@@ -26,7 +26,7 @@ possible commands and arguments.
 
 #### Pre-trained models and datasets
 
-The release (TODO) contains the synthetic datasets as well as the trained models
+The [release v1.0](https://github.com/SpaceAbleOrg/symplectic-hnn/releases/tag/v1.0) contains the synthetic datasets as well as the trained models
 that we used for the article. The datasets are pickled Python dictionaries (`*.shnndata`), which should be unpickled
 manually. Whereas the trained models' `state_dict` was saved together with the used arguments via `torch.save` in a
 `*.tar` file. This file can simply be loaded by ```HNN.load``` through specification of the correct arguments (i.e. 
