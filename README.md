@@ -18,7 +18,7 @@ then ```cd symplectic-hnn```.
 Create the anaconda virtual environment using ```conda env create -f environment.yml``` and activate it as
 ```conda activate main3.9```.
 
-To run the training code, run for example ```python train.py pendulum -loss_type euler-symp```.
+To run the training code, run for example ```python train.py pendulum --loss_type euler-symp```.
 To run the evaluation code, launch of the Jupyter Notebooks in the ```plotting``` folder. Please consult the below
 explanation of the repository structure and notably the file ```model/args.py``` for a detailed description of the
 possible commands and arguments.
