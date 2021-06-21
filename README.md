@@ -19,7 +19,7 @@ Create the anaconda virtual environment using ```conda env create -f environment
 ```conda activate main3.9```.
 
 To run the training code, run for example ```python train.py pendulum --loss_type euler-symp```.
-To run the evaluation code, launch of the Jupyter Notebooks in the ```plotting``` folder. Please consult the below
+To run the evaluation code, launch one of the Jupyter Notebooks in the ```plotting``` folder. Please consult the below
 explanation of the repository structure and notably the file ```model/args.py``` for a detailed description of the
 possible commands and arguments.
 
@@ -28,7 +28,7 @@ possible commands and arguments.
 
 The [release v1.0](https://github.com/SpaceAbleOrg/symplectic-hnn/releases/tag/v1.0) contains the synthetic datasets as well as the trained models
 that we used for the article. The datasets are pickled Python dictionaries (`*.shnndata`), which should be unpickled
-manually. Whereas the trained models' `state_dict` was saved together with the used arguments via `torch.save` in a
+manually. Contrarily, the trained models' `state_dict` was saved together with the used arguments via `torch.save` in a
 `*.tar` file. This file can simply be loaded by ```HNN.load``` through specification of the correct arguments (i.e. 
 name, the loss type, the value of h and, if applicable, the noise strength) that
 were initially used to train the model.
