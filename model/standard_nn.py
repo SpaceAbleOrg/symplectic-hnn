@@ -1,16 +1,10 @@
-# Symplectic Hamiltonian Neural Networks | 2021
-# Marco David
-
-# Originally written for the project and by:
-# Hamiltonian Neural Networks | 2019
-# Sam Greydanus, Misko Dzamba, Jason Yosinski
-
 import torch
 from utils import choose_nonlinearity
 
 
 class MLP(torch.nn.Module):
-    """ Just a salt-of-the-earth multi-layer perceptron neural network. """
+    """ This class implements a simple multi-layer perceptron neural network, with a configurable number of
+        hidden layers, each of the same dimension. """
 
     def __init__(self, hidden_layers, input_dim, hidden_dim, output_dim, nonlinearity='tanh'):
         super(MLP, self).__init__()

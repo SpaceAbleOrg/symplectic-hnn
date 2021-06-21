@@ -44,7 +44,7 @@ def get_predicted_vector_field(model, args, gridsize=20):
 
     # Run model
     mesh_x = torch.tensor(xs, requires_grad=True, dtype=torch.float32)
-    mesh_dx = model.time_derivative(mesh_x)
+    mesh_dx = model.derivative(mesh_x)
     return {'x': xs, 'y': mesh_dx.data.numpy()}
 
 

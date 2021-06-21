@@ -1,10 +1,3 @@
-# Symplectic Hamiltonian Neural Networks | 2021
-# Marco David
-
-# Originally written for the project and by:
-# Hamiltonian Neural Networks | 2019
-# Sam Greydanus, Misko Dzamba, Jason Yosinski
-
 import torch
 
 from model.args import UpdatableNamespace
@@ -14,10 +7,16 @@ from utils import save_path
 
 
 class HNN(torch.nn.Module):
-    """ Learn arbitrary Hamiltonian vector fields that are the symplectic derivative of a scalar function H """
+    """ This class allows to learn arbitrary Hamiltonian vector fields that are the symplectic derivative of a
+        scalar function H. It is built as a wrapper around any other `torch.nn.Module` which has to be passed
+        to this class' constructor as `differentiable_model`. It notably defines the new `derivative` method which
+        calculates the gradient of the model's `output.sum()` multiplied on the left by the symplectic form J^{-1}. """
 
     @staticmethod
     def create(args):
+        """ This helper method allows to create the typical HNN where the base `differentiable_model`
+            is a standard MLP and has output dimension 1 only (i.e. directly tries to predict H and nothing more).
+            The created model will be randomly initialized. """
         if torch.cuda.is_available():
             torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
@@ -31,6 +30,8 @@ class HNN(torch.nn.Module):
 
     @staticmethod
     def load(args, cpu=False):
+        """ This helper method allows to load the `state_dict` of an already trained model, re-instantiating the
+            HNN object and returning it together with exact set of `args` that had been used to training. """
         if cpu:
             saved_dict = torch.load(save_path(args), map_location=torch.device('cpu'))
         else:
@@ -55,8 +56,9 @@ class HNN(torch.nn.Module):
         # squeeze the last dimension in [batch_size, 1] since H is a scalar
         return self.differentiable_model(x).squeeze(-1)
 
-    def time_derivative(self, x):
-        """ Calculates the Hamiltonian vector field from the predicted Hamiltonian (self.forward) """
+    def derivative(self, x):
+        """ Calculates the Hamiltonian vector field from the predicted Hamiltonian (self.forward) as the symplectic
+            gradient, that is the matrix-vector product J^{-1} · \grad H."""
         H = self.forward(x)  # traditional forward pass, predicts Hamiltonian
 
         gradH = torch.autograd.grad(H.sum(), x, create_graph=True)[0]  # gradient using autograd
@@ -70,8 +72,13 @@ class HNN(torch.nn.Module):
 
 
 class CorrectedHNN(HNN):
-    """ Use an HNN but correct the learned modified Hamiltonian to actually
-        and accurately predict the real Hamiltonian. """
+    """ This subclass of HNN is compatible with the `SymplecticOneStepScheme.corrected` method (if defined) to
+        obtain the Hamiltonian as given by the modified equation, upto the order that the
+        `SymplecticOneStepScheme.corrected` is implemented for.
+
+        This class can notably be instantiated with a trained model to make a post-training correction to the learned
+        modified Hamiltonian. But, alternatively, one may also train directly with the modified equation (to be tested).
+    """
 
     def __init__(self, differentiable_model, scheme, h):
         super().__init__(differentiable_model)

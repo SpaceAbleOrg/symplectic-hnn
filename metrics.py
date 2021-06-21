@@ -18,7 +18,7 @@ def integrate_model_rk45(model, t_span, t_eval, y0, fun=None, **kwargs):
     def default_fun(t, np_x):
         x = torch.tensor(np_x, requires_grad=True, dtype=torch.float32)
         x = x.view(1, np.size(np_x))  # batch size of 1
-        dx = model.time_derivative(x).data.numpy().reshape(-1)
+        dx = model.derivative(x).data.numpy().reshape(-1)
         return dx
 
     # Shortcut syntax, not pythonic: fun = fun or default_fun
@@ -42,7 +42,7 @@ def integrate_model_custom(model, t_span, y0, args):
 
         y_arg = scheme.argument(yn, y_var)
 
-        return (yn + h * model.time_derivative(y_arg)).detach().numpy().squeeze()
+        return (yn + h * model.derivative(y_arg)).detach().numpy().squeeze()
 
     y = y0
     ys = [y0]

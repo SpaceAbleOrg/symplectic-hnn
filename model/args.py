@@ -1,10 +1,3 @@
-# Symplectic Hamiltonian Neural Networks | 2021
-# Marco David
-
-# Originally written for the project and by:
-# Hamiltonian Neural Networks | 2019
-# Sam Greydanus, Misko Dzamba, Jason Yosinski
-
 import time
 import itertools
 
@@ -12,6 +5,11 @@ from argparse import ArgumentParser, Namespace
 
 
 class UpdatableNamespace(Namespace):
+    """ This class inherits from `argsparse.Namespace` but additionally defines the __or__ operator (|) by lifting
+        the definition of dict.__or__ to the Namespace's `self.__dict__` introduced with Python 3.9.
+
+        NOTE: The __ior__ operator (|=) which acts inplace is not defined by this class. """
+
     @staticmethod
     def get(obj):
         return UpdatableNamespace() | obj
@@ -26,6 +24,9 @@ class UpdatableNamespace(Namespace):
 
 
 def get_args(lenient=False):
+    """ This function configures an `argparse.ArgumentParser` and uses it to load/parse all arguments provided via
+        the command line. An pretty-printed overview can be obtained by running (e.g.) `train.py` without any
+        arguments or with the `--help` option. """
     parser = ArgumentParser(description=None)
 
     # MAIN ARGUMENT (non-optional)
@@ -69,6 +70,9 @@ def get_args(lenient=False):
 
 
 def custom_product(name_list=(None,), loss_type_list=(None,), h_list=(None,), noise_list=(None,)):
+    """ This function is a simple, typed wrapper of `itertools.product` which additionally does appropriate
+        type conversions from string (e.g. to float) as needed. It writes the values into a dictionary which
+        is returned by the function. """
     for name, loss_type, h, noise in itertools.product(name_list, loss_type_list, h_list, noise_list):
         args = {}
         if name:
