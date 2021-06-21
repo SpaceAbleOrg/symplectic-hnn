@@ -10,6 +10,10 @@ from utils import choose_helper
 
 
 def symplectic_form(n, canonical_coords=True):
+    """ Returns a `torch.Tensor` containing the canonical symplectic n x  n matrix. If `canonical_coords=True` (default)
+        this matrix will be in 2x2 block form containing ±Id or 0 as usual of sizes n//2 each, corresponding to an
+        arrangement y = (p1, ..., pn, q1, ..., qn). Otherwise, the matrix will be in alternating checkerboard pattern
+        like the Levi-Civita permutation tensor, corresponding to y = (p1, q1, ..., pn, qn). """
     if canonical_coords:
         Id = np.eye(n)
         J = np.concatenate([Id[n // 2:], -Id[:n // 2]])
@@ -42,6 +46,8 @@ def choose_data(name):
 
 
 class HamiltonianDataSet(ABC):
+    """ Abstract base class for any data set that can be generated from a Hamiltonian (i.e. a scalar function of
+        position and momentum variables). """
     def __init__(self, h, noise):
         self.h = h
         self.noise = noise
@@ -49,20 +55,27 @@ class HamiltonianDataSet(ABC):
     @staticmethod
     @abstractmethod
     def dimension():
+        """ Abstract method that requires any specific data set to return its full dimension 2n, i.e. the number
+            of different q and p variables that are used in total. """
         pass
 
     @classmethod
     @abstractmethod
     def hamiltonian(cls, p, q, t=None):
-        """ To implement the Hamiltonian function H(p, q) of the respective system. All functions must be from
-            the `autograd.numpy` library to automatically allow generation of training data sets. """
+        """ Abstract method that requires any specific data set to implement the Hamiltonian function H(p, q)
+            defining the respective physical  system. All functions must be from the `autograd.numpy` library to
+            automatically allow generation of training data sets. """
         pass
 
     @classmethod
     def bundled_hamiltonian(cls, coords, t=None):
+        """ Wrapper function for the Hamiltonian, that allows to call H(y) directly, where y = (p, q). """
         return cls.hamiltonian(*np.split(coords, 2), t=t).squeeze()
 
     def dynamics_fn(self, t, coords):
+        """ This method provides the Hamiltonian vector field J^{-1} · \grad H of the implemented Hamiltonian
+            through use of the `autograd` library to calculate the gradient automagically.
+            Note that this method returns a `numpy.ndarray` instead of a `torch.Tensor`. """
         gradH = autograd.grad(self.bundled_hamiltonian)(coords, t=t)
         J = symplectic_form(self.dimension()).cpu().numpy()
         return J.T @ gradH  # does NOT return a torch.Tensor but a numpy.ndarray
@@ -70,18 +83,20 @@ class HamiltonianDataSet(ABC):
     @staticmethod
     @abstractmethod
     def phase_space_boundaries():
-        """ Using these values, cls.random_initial_point() creates a random initial point
-            from the interval [cmin, cmax]^dim where dim=cls.dimension(). """
+        """ Abstract method that requires any specific data set to specify a tuple of two numbers (a, b) defining the
+            subregion \Omega_d in phase space R^2n, where `cls.dimension() == 2n`. Using these values, the method
+            `cls.random_initial_point` creates a random initial point from the interval [a, b]^2n. """
         # To implement as: return cmin, cmax
         pass
 
     @classmethod
     def random_initial_value(cls, draw_omega_m=False):
-        """ Return a random initial value which will be used to generate individual trajectories for the dataset.
-            The space this is drawn from is denoted $\Omega_d$, i.e. the 'data generation' region of phase space.
+        """ This methods returns a random initial value from the subregion $\Omega_d$ of phase space (i.e. the
+            'data generation' region of phase space). These initial values are for example used to generate individual
+            trajectories of the system for the dataset.
 
             By default this is simply drawn uniformly from the interval provided by `cls.phase_space_boundaries()`
-            raised to `cls.dimension()` (i.e. one value from this interval for each dimension of the problem). """
+            in each dimension of the problem. """
         cmin, cmax = cls.phase_space_boundaries()
         d = cmax - cmin
         m = (cmax + cmin) / 2
@@ -103,11 +118,18 @@ class HamiltonianDataSet(ABC):
     @staticmethod
     @abstractmethod
     def static_initial_value():
-        """ Return a canonical (constant) initial value for plotting an individual trajectory to exemplify
-            the flow predicted by the (Symplectic) HNN; obtained by integrating the HNN's gradient vector field. """
+        """ Abstract method that requires any specific data set to define a canonical (constant) initial value for
+            plotting an individual trajectory in order to exemplify the flow predicted by a (Symplectic) HNN. This
+            trajectory will be obtained by integrating the HNN's symplectic vector field. """
         pass
 
     def get_trajectory(self, t_span=(0, 3), rtol=1e-9, y0=None, t_eval=None, **kwargs):
+        """ Based on the specified Hamiltonian, this method generates a single trajectory obtained by integrating
+            the true Hamiltonian vector field with the RK45 scheme and a relative tolerance of `rtol` (default 1e-9).
+            The solution is integrated over the interval `t_span` and evaluated at the points in `t_eval`.
+
+            Returns an array y containing the points y(t_i) and the given / generated list `t_eval` of all t_i.
+        """
         if t_eval is None:
             t_eval = get_t_eval(t_span, self.h)
 
@@ -123,6 +145,9 @@ class HamiltonianDataSet(ABC):
         return y, t_eval
 
     def get_dataset(self, seed=0, samples=1500, test_split=0.2, print_args=None, **kwargs):
+        """ Wrapper method for the `get_trajectory` method, which generates N=`samples` (default 1500) trajectories
+            and accumulates them. Additionally does a train / test split before returning a dict of train/test
+            data points (y_0, y_1) as well as the times (t_0, t_1) used to generate these values. """
         data = {'meta': locals()}
         np.random.seed(seed)
 
@@ -149,6 +174,13 @@ class HamiltonianDataSet(ABC):
         return data
 
     def get_analytic_field(self, gridsize=20):
+        """ Based on the specified Hamiltonian, this method calculates the analytic Hamiltonian (symplectic) vector
+            field on a 2D meshgrid defined in both dimensions by the interval of `cls.phase_space_boundaries`,
+            and with the given `gridsize` (default 20). Returns a dictionary with the flattened and stacked
+            meshgrid (key 'x') and the vector field that was calculated (key 'y').
+
+            WARNING: This method only works for systems of dimension 2.
+        """
         field = {'meta': locals()}
 
         # Meshgrid to get lattice
@@ -170,7 +202,6 @@ class HarmonicOscillator(HamiltonianDataSet):
 
     @staticmethod
     def dimension():
-        """ Returns 2 for the full system's dimensionality: one q position coordinate, one p momentum coordinate. """
         return 2
 
     @classmethod
@@ -192,7 +223,6 @@ class NonlinearPendulum(HamiltonianDataSet):
 
     @staticmethod
     def dimension():
-        """ Returns 2 for the full system's dimensionality: one q position coordinate, one p momentum coordinate. """
         return 2
 
     @classmethod
@@ -227,8 +257,6 @@ class DoublePendulum(HamiltonianDataSet):
 
     @staticmethod
     def dimension():
-        """ Returns 4 for the full system's dimensionality:
-            two q angle coordinates, two p (angular) momentum coordinates. """
         return 4
 
     @classmethod
@@ -252,11 +280,11 @@ class TwoBody(HamiltonianDataSet):
 
     @staticmethod
     def dimension():
-        """ Returns 8 for the full system's dimensionality: two q position coordinates, two p momentum coordinates. """
         return 8
 
     @classmethod
     def hamiltonian(cls, p, q, t=None):
+        # Regularize the possible pole from 1 / |q_1 - q_2| by adding a small epsilon to the denominator.
         epsilon = 1e-1
         H = 1 / 2 * autograd.numpy.sum(p ** 2) + 1 / (
                 autograd.numpy.sum(autograd.numpy.abs((q[0:2] - q[2:4]))) + epsilon)
@@ -268,17 +296,13 @@ class TwoBody(HamiltonianDataSet):
 
     @classmethod
     def random_initial_value(cls, draw_omega_m=False):
-        """ Start at a random initial point and initial momentum, in the interval provided by
-            `TwoBody.phase_space_boundaries()` for each dimension of the problem (see `TwoBody.dimension()`).
-
-            However, ensure that the distance of the two bodies squared is not smaller than a certain threshold
-            in order to avoid the poles of the Hamiltonian. Should a provided value provided by the superclass
-            implementation violate this condition, redraw. """
-
         y = super().random_initial_value()  # = (p1, p2, q1, q2) which are all respectively of dimension 2
 
-        # If the Hamiltonian is not regularized, ensure that generated initial data is far from any poles.
-        # The fact that this problem is defined for dimension 8 is hardcoded here.
+        # If the Hamiltonian is not regularized, ensure that generated initial data is far from any poles,
+        #   i.e. ensure that the distance of the two bodies squared is not smaller than a certain threshold-
+        #   Should a given value violate this condition,redraw. The fact that this problem is defined for
+        #   dimension 8 is hardcoded here.
+
         # threshold = 1e-1
         # q1, q2 = y[4:6], y[6:8]
         # if ((q1 - q2) ** 2).sum() < threshold:
