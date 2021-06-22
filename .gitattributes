@@ -1,0 +1,5 @@
+# Exclude the Plotting jupyter notebooks from the GitHub linguist analysis
+*.ipynb linguist-vendored
+
+# ALTERNATIVE: Reclassify them as Python source code
+#*.ipynb linguist-language=Python
