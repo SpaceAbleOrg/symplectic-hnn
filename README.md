@@ -5,7 +5,7 @@ Copyright © 2021 SpaceAble. This work is published under the terms of the
 See also the file ```LICENSE```.
 
 This repository hosts the open source code for the article "Symplectic Learning for Hamiltonian Neural Networks",
-authored by Marco David and Florian Méhats, available [online] (TODO Add arXiv link.). An address for possible
+authored by Marco David and Florian Méhats, available [on the arXiv](https://arxiv.org/abs/2106.11753). An address for possible
 correspondence related to this work can be found in the article PDF file. 
 
 #### Dependencies & Installation
